@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../common/prisma.service';
 import { OtpService } from './otp.service';
@@ -56,14 +56,16 @@ export class AuthService {
       });
     }
 
-    // حدد الدور بناءً على وجود معرض
+    // الـ role بيُحسب هنا للـ response بس
+    // في الـ JwtStrategy الـ role بيتحسب من الـ DB عند كل request (يمنع Role Confusion)
     const role: UserRole = user.owner ? 'OWNER' : 'CUSTOMER';
     const ownerId = user.owner?.id ?? null;
 
+    // الـ JWT يحتوي على الحد الأدنى من البيانات (sub + phone فقط)
+    // الـ role لا يُخزَّن في الـ token لمنع التلاعب
     const token = this.jwt.sign({
       sub: user.id,
       phone: user.phone,
-      role,
     });
 
     return {
