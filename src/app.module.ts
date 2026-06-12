@@ -11,6 +11,8 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './common/prisma.module';
 import { RedisModule } from './common/redis.module';
+import { UploadsModule } from './uploads/uploads.module';
+import { CouponsModule } from './coupons/coupons.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { RedisModule } from './common/redis.module';
     BookingsModule,
     ReviewsModule,
     NotificationsModule,
+    UploadsModule,
+    CouponsModule,
   ],
   providers: [
     // تطبيق الـ throttling على كل الـ endpoints

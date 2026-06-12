@@ -46,6 +46,7 @@ export class CarsService {
         seats: dto.seats ?? 5,
         lat: dto.lat,
         lng: dto.lng,
+        driverRequired: dto.driverRequired ?? false,
         status: CarStatus.AVAILABLE,
       },
     });

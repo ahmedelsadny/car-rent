@@ -57,17 +57,30 @@ enum ReviewTargetType {
   CUSTOMER
 }
 
+enum DeliveryType {
+  HOME    // توصيل لعند العميل (بيدفع رسوم)
+  PICKUP  // العميل يستلم من المعرض (بيجيله booking code)
+}
+
+enum InsuranceType {
+  BASIC           // أساسي (مدفوع في السعر)
+  COMPREHENSIVE   // شامل (بيدفع إضافي/يوم)
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(uuid())
-  phone        String   @unique
-  name         String
-  email        String?
-  nationalId   String?  @map("national_id")
-  avatarUrl    String?  @map("avatar_url")
-  verifiedAt   DateTime? @map("verified_at")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                 String    @id @default(uuid())
+  phone              String    @unique
+  name               String
+  email              String?
+  nationalId         String?   @map("national_id")
+  nationalIdImageUrl String?   @map("national_id_image_url")
+  driverLicenseUrl   String?   @map("driver_license_url")
+  avatarUrl          String?   @map("avatar_url")
+  isAdmin            Boolean   @default(false) @map("is_admin")
+  verifiedAt         DateTime? @map("verified_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
 
   owner         Owner?
   bookings      Booking[]
@@ -84,6 +97,9 @@ model Owner {
   businessName    String           @map("business_name")
   commercialReg   String?          @map("commercial_reg")
   address         String?
+  branchAddress   String?          @map("branch_address")  // عنوان الاستلام للـ PICKUP
+  branchLat       Float?           @map("branch_lat")
+  branchLng       Float?           @map("branch_lng")
   commissionRate  Float            @default(0.13) @map("commission_rate")
   bankAccount     String?          @map("bank_account")
   subscriptionTier SubscriptionTier @default(FREE) @map("subscription_tier")
@@ -97,23 +113,24 @@ model Owner {
 }
 
 model Car {
-  id           String    @id @default(uuid())
-  ownerId      String    @map("owner_id")
-  make         String                        // Toyota, Hyundai...
-  model        String
-  year         Int
-  licensePlate String    @unique @map("license_plate")
-  color        String
-  transmission String    @default("automatic")
-  seats        Int       @default(5)
-  pricePerDay  Float     @map("price_per_day")
-  depositAmount Float    @default(0) @map("deposit_amount")
-  features     String[]  @default([])       // ["AC", "GPS", "بلوتوث"]
-  imageUrls    String[]  @default([]) @map("image_urls")
-  status       CarStatus @default(AVAILABLE)
-  lat          Float?
-  lng          Float?
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id             String    @id @default(uuid())
+  ownerId        String    @map("owner_id")
+  make           String
+  model          String
+  year           Int
+  licensePlate   String    @unique @map("license_plate")
+  color          String
+  transmission   String    @default("automatic")
+  seats          Int       @default(5)
+  pricePerDay    Float     @map("price_per_day")
+  depositAmount  Float     @default(0) @map("deposit_amount")
+  features       String[]  @default([])
+  imageUrls      String[]  @default([]) @map("image_urls")
+  status         CarStatus @default(AVAILABLE)
+  driverRequired Boolean   @default(false) @map("driver_required") // لو true → لا تُأجَّر إلا بسواق
+  lat            Float?
+  lng            Float?
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   owner    Owner     @relation(fields: [ownerId], references: [id])
   bookings Booking[]
@@ -121,28 +138,68 @@ model Car {
   @@map("cars")
 }
 
+model Coupon {
+  id              String    @id @default(uuid())
+  code            String    @unique
+  discountPercent Float     @map("discount_percent")  // 10 = 10%
+  maxUses         Int?      @map("max_uses")           // null = غير محدود
+  usedCount       Int       @default(0) @map("used_count")
+  expiresAt       DateTime? @map("expires_at")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  bookings Booking[]
+
+  @@map("coupons")
+}
+
 model Booking {
   id                 String        @id @default(uuid())
+  bookingCode        String?       @unique @map("booking_code")  // CR-240612-A7X3 (auto-generated)
   carId              String        @map("car_id")
   userId             String        @map("user_id")
   startDate          DateTime      @map("start_date")
   endDate            DateTime      @map("end_date")
   totalDays          Int           @map("total_days")
+
+  // ── Pricing ──
   subtotal           Float
   deliveryFee        Float         @default(0) @map("delivery_fee")
+  driverFee          Float         @default(0) @map("driver_fee")
+  insuranceFee       Float         @default(0) @map("insurance_fee")
   deposit            Float         @default(0)
+  discountAmount     Float         @default(0) @map("discount_amount")
   platformCommission Float         @map("platform_commission")
   ownerPayout        Float         @map("owner_payout")
-  status             BookingStatus @default(PENDING_PAYMENT)
+
+  // ── Delivery ──
+  deliveryType       DeliveryType  @default(HOME) @map("delivery_type")
   deliveryAddress    String?       @map("delivery_address")
   deliveryLat        Float?        @map("delivery_lat")
   deliveryLng        Float?        @map("delivery_lng")
+
+  // ── Driver ──
+  withDriver         Boolean       @default(false) @map("with_driver")
+  additionalDriver   String?       @map("additional_driver")
+
+  // ── Insurance ──
+  insuranceType      InsuranceType @default(BASIC) @map("insurance_type")
+
+  // ── Documents ──
+  nationalIdImageUrl String?       @map("national_id_image_url")
+  driverLicenseUrl   String?       @map("driver_license_url")
+
+  // ── Extra ──
+  specialRequests    String?       @map("special_requests")
+  couponId           String?       @map("coupon_id")
+  status             BookingStatus @default(PENDING_PAYMENT)
   cancellationReason String?       @map("cancellation_reason")
   confirmedAt        DateTime?     @map("confirmed_at")
   createdAt          DateTime      @default(now()) @map("created_at")
 
   car       Car        @relation(fields: [carId], references: [id])
   user      User       @relation(fields: [userId], references: [id])
+  coupon    Coupon?    @relation(fields: [couponId], references: [id])
   payment   Payment?
   handovers Handover[]
   reviews   Review[]
@@ -172,7 +229,7 @@ model Handover {
   type             HandoverType
   photoUrls        String[]    @default([]) @map("photo_urls")
   notes            String?
-  fuelLevel        Float?      @map("fuel_level")   // 0.0 → 1.0
+  fuelLevel        Float?      @map("fuel_level")
   odometer         Int?
   digitalSignature String?     @map("digital_signature")
   createdAt        DateTime    @default(now()) @map("created_at")
@@ -188,7 +245,7 @@ model Review {
   reviewerId  String           @map("reviewer_id")
   revieweeId  String           @map("reviewee_id")
   targetType  ReviewTargetType @map("target_type")
-  rating      Int              // 1-5
+  rating      Int
   comment     String?
   createdAt   DateTime         @default(now()) @map("created_at")
 
@@ -201,7 +258,7 @@ model Review {
 model Notification {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
-  type      String                        // BOOKING_CONFIRMED, NEW_REQUEST...
+  type      String
   title     String
   body      String
   data      Json?
@@ -217,7 +274,7 @@ model DeviceToken {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
   token     String   @unique
-  platform  String   // ios, android, web
+  platform  String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -225,4 +282,3 @@ model DeviceToken {
 
   @@map("device_tokens")
 }
-

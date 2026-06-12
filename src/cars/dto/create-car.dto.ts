@@ -9,6 +9,7 @@ import {
   IsInt,
   IsIn,
   MinLength,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -88,4 +89,12 @@ export class CreateCarDto {
   @IsNumber()
   @Type(() => Number)
   lng?: number;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'هل السيارة تُأجَّر بسواق فقط؟',
+  })
+  @IsOptional()
+  @IsBoolean()
+  driverRequired?: boolean;
 }
