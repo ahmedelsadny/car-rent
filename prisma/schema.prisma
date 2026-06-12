@@ -73,6 +73,7 @@ model User {
   bookings      Booking[]
   notifications Notification[]
   reviews       Review[]       @relation("Reviewer")
+  deviceTokens  DeviceToken[]
 
   @@map("users")
 }
@@ -211,3 +212,17 @@ model Notification {
 
   @@map("notifications")
 }
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  platform  String   // ios, android, web
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("device_tokens")
+}
+

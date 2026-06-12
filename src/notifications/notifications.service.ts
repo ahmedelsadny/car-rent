@@ -37,9 +37,15 @@ export class NotificationsService implements OnModuleInit {
       },
     });
 
-    // 2. جيب FCM tokens اليوزر (محتاج تضيف device_tokens table)
-    // const tokens = await this.getDeviceTokens(userId);
-    // if (tokens.length) await this.sendPush(tokens, payload);
+    // 2. جيب FCM tokens اليوزر
+    const tokens = await this.getDeviceTokens(userId);
+    if (tokens.length) {
+      try {
+        await this.sendPush(tokens, payload);
+      } catch (err) {
+        console.error('Failed to send push notification via Firebase:', err.message);
+      }
+    }
   }
 
   async getUserNotifications(userId: string) {
@@ -65,15 +71,21 @@ export class NotificationsService implements OnModuleInit {
   }
 
   // حفظ device token للـ push notifications
-  // ملاحظة: محتاج تضيف device_tokens table في الـ schema
   async registerDeviceToken(userId: string, token: string, platform: string) {
-    // TODO: save token in device_tokens table
-    // await this.prisma.deviceToken.upsert({
-    //   where: { token },
-    //   update: { userId, platform, updatedAt: new Date() },
-    //   create: { userId, token, platform },
-    // });
-    return { message: 'Device token registered' };
+    await this.prisma.deviceToken.upsert({
+      where: { token },
+      update: { userId, platform, updatedAt: new Date() },
+      create: { userId, token, platform },
+    });
+    return { message: 'Device token registered successfully' };
+  }
+
+  private async getDeviceTokens(userId: string): Promise<string[]> {
+    const tokens = await this.prisma.deviceToken.findMany({
+      where: { userId },
+      select: { token: true },
+    });
+    return tokens.map(t => t.token);
   }
 
   private async sendPush(tokens: string[], payload: NotificationPayload) {
