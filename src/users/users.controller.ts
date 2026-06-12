@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { SubmitNationalIdDto } from './dto/submit-national-id.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -31,9 +32,9 @@ export class UsersController {
   @ApiOperation({ summary: 'رفع صورة الهوية للتحقق' })
   submitNationalId(
     @CurrentUser('id') userId: string,
-    @Body() body: { nationalId: string; imageUrl: string },
+    @Body() dto: SubmitNationalIdDto,
   ) {
-    return this.usersService.submitNationalId(userId, body.nationalId, body.imageUrl);
+    return this.usersService.submitNationalId(userId, dto.nationalId, dto.imageUrl);
   }
 
   @Get('me/stats')
@@ -42,3 +43,4 @@ export class UsersController {
     return this.usersService.getStats(userId);
   }
 }
+
