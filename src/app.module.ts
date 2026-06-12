@@ -5,6 +5,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { OwnersModule } from './owners/owners.module';
+import { CarsModule } from './cars/cars.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -24,6 +25,7 @@ import { PrismaModule } from './common/prisma.module';
     AuthModule,
     UsersModule,
     OwnersModule,
+    CarsModule,
     BookingsModule,
     ReviewsModule,
     NotificationsModule,
