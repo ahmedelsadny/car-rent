@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  PENDING_OWNER_APPROVAL
+  CONFIRMED
+  IN_DELIVERY
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+enum PaymentMethod {
+  PAYMOB
+  FAWRY
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum HandoverType {
+  PICKUP   // عند التسليم للعميل
+  RETURN   // عند استلام العربية
+}
+
+enum CarStatus {
+  AVAILABLE
+  RENTED
+  MAINTENANCE
+  INACTIVE
+}
+
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PRO
+}
+
+enum ReviewTargetType {
+  CAR
+  OWNER
+  CUSTOMER
+}
+
+// ─── Models ──────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  phone        String   @unique
+  name         String
+  email        String?
+  nationalId   String?  @map("national_id")
+  avatarUrl    String?  @map("avatar_url")
+  verifiedAt   DateTime? @map("verified_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  owner         Owner?
+  bookings      Booking[]
+  notifications Notification[]
+  reviews       Review[]       @relation("Reviewer")
+
+  @@map("users")
+}
+
+model Owner {
+  id              String           @id @default(uuid())
+  userId          String           @unique @map("user_id")
+  businessName    String           @map("business_name")
+  commercialReg   String?          @map("commercial_reg")
+  address         String?
+  commissionRate  Float            @default(0.13) @map("commission_rate")
+  bankAccount     String?          @map("bank_account")
+  subscriptionTier SubscriptionTier @default(FREE) @map("subscription_tier")
+  isVerified      Boolean          @default(false) @map("is_verified")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  user User  @relation(fields: [userId], references: [id])
+  cars Car[]
+
+  @@map("owners")
+}
+
+model Car {
+  id           String    @id @default(uuid())
+  ownerId      String    @map("owner_id")
+  make         String                        // Toyota, Hyundai...
+  model        String
+  year         Int
+  licensePlate String    @unique @map("license_plate")
+  color        String
+  transmission String    @default("automatic")
+  seats        Int       @default(5)
+  pricePerDay  Float     @map("price_per_day")
+  depositAmount Float    @default(0) @map("deposit_amount")
+  features     String[]  @default([])       // ["AC", "GPS", "بلوتوث"]
+  imageUrls    String[]  @default([]) @map("image_urls")
+  status       CarStatus @default(AVAILABLE)
+  lat          Float?
+  lng          Float?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  owner    Owner     @relation(fields: [ownerId], references: [id])
+  bookings Booking[]
+
+  @@map("cars")
+}
+
+model Booking {
+  id                 String        @id @default(uuid())
+  carId              String        @map("car_id")
+  userId             String        @map("user_id")
+  startDate          DateTime      @map("start_date")
+  endDate            DateTime      @map("end_date")
+  totalDays          Int           @map("total_days")
+  subtotal           Float
+  deliveryFee        Float         @default(0) @map("delivery_fee")
+  deposit            Float         @default(0)
+  platformCommission Float         @map("platform_commission")
+  ownerPayout        Float         @map("owner_payout")
+  status             BookingStatus @default(PENDING_PAYMENT)
+  deliveryAddress    String?       @map("delivery_address")
+  deliveryLat        Float?        @map("delivery_lat")
+  deliveryLng        Float?        @map("delivery_lng")
+  cancellationReason String?       @map("cancellation_reason")
+  confirmedAt        DateTime?     @map("confirmed_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+
+  car       Car        @relation(fields: [carId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+  payment   Payment?
+  handovers Handover[]
+  reviews   Review[]
+
+  @@map("bookings")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  bookingId       String        @unique @map("booking_id")
+  gatewayRef      String?       @unique @map("gateway_ref")
+  method          PaymentMethod
+  amount          Float
+  currency        String        @default("EGP")
+  status          PaymentStatus @default(PENDING)
+  gatewayResponse Json?         @map("gateway_response")
+  paidAt          DateTime?     @map("paid_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("payments")
+}
+
+model Handover {
+  id               String      @id @default(uuid())
+  bookingId        String      @map("booking_id")
+  type             HandoverType
+  photoUrls        String[]    @default([]) @map("photo_urls")
+  notes            String?
+  fuelLevel        Float?      @map("fuel_level")   // 0.0 → 1.0
+  odometer         Int?
+  digitalSignature String?     @map("digital_signature")
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("handovers")
+}
+
+model Review {
+  id          String           @id @default(uuid())
+  bookingId   String           @map("booking_id")
+  reviewerId  String           @map("reviewer_id")
+  revieweeId  String           @map("reviewee_id")
+  targetType  ReviewTargetType @map("target_type")
+  rating      Int              // 1-5
+  comment     String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  reviewer User    @relation("Reviewer", fields: [reviewerId], references: [id])
+
+  @@map("reviews")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String                        // BOOKING_CONFIRMED, NEW_REQUEST...
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
