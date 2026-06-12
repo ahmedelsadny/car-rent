@@ -10,10 +10,14 @@ import { BookingsModule } from './bookings/bookings.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './common/prisma.module';
+import { RedisModule } from './common/redis.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+
+    // Redis مشترك بين كل الـ modules (@Global)
+    RedisModule,
 
     // Global rate limiting: 100 requests/دقيقة لكل IP
     ThrottlerModule.forRoot([{

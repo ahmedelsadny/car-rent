@@ -6,6 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { CreateCarDto } from './dto/create-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import { GetCarsFilterDto } from './dto/get-cars-filter.dto';
@@ -13,7 +14,10 @@ import { CarStatus } from '@prisma/client';
 
 @Injectable()
 export class CarsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redis: RedisService,
+  ) {}
 
   // ── إضافة سيارة جديدة (خاص بالمعارض) ──
   async create(userId: string, dto: CreateCarDto) {
@@ -104,8 +108,22 @@ export class CarsService {
       this.prisma.car.count({ where }),
     ]);
 
+    // ── Car Cooldown Filter ──
+    // بنستخدم mget مرة واحدة بدل exists لكل سيارة على حدة (أداء أفضل)
+    const cooldownKeys = cars.map((c) => `cooldown:${c.id}`);
+    const cooldownValues = cooldownKeys.length
+      ? await this.redis.getClient().mget(...cooldownKeys)
+      : [];
+    const coolingSet = new Set(
+      cars
+        .filter((_, i) => cooldownValues[i] !== null)
+        .map((c) => c.id),
+    );
+
     // حساب التقييم المتوسط لكل سيارة
-    const carsWithRating = cars.map((car) => {
+    const carsWithRating = cars
+      .filter((car) => !coolingSet.has(car.id)) // إزالة السيارات في فترة الـ cooldown
+      .map((car) => {
       const allRatings = car.bookings.flatMap((b) => b.reviews.map((r) => r.rating));
       const avgRating = allRatings.length
         ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length
