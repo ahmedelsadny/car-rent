@@ -16,15 +16,25 @@ export class OtpService {
   }
 
   generate(): string {
-    // كود 6 أرقام
+    // كود ثابت للتجربة في بيئة التطوير
+    if (this.config.get('NODE_ENV') === 'development') {
+      return '111111';
+    }
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   async store(phone: string, code: string): Promise<void> {
+    if (this.config.get('NODE_ENV') === 'development') {
+      console.log(`[OTP Store Mock] Saved OTP ${code} for phone ${phone}`);
+      return;
+    }
     await this.redis.setex(`otp:${phone}`, this.OTP_TTL, code);
   }
 
   async verify(phone: string, code: string): Promise<boolean> {
+    if (this.config.get('NODE_ENV') === 'development') {
+      return code === '111111';
+    }
     const stored = await this.redis.get(`otp:${phone}`);
     if (!stored || stored !== code) return false;
 
@@ -32,6 +42,7 @@ export class OtpService {
     await this.redis.del(`otp:${phone}`);
     return true;
   }
+
 
   async send(phone: string, code: string): Promise<void> {
     // في الـ development بنـ log الكود بس
