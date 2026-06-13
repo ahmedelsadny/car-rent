@@ -109,10 +109,10 @@ export class BookingsService {
     // 6. تحقق من availability
     await this.checkAvailability(dto.carId, dto.startDate, dto.endDate);
 
-    // 7. Slot Lock
-    const lockKey = `slot:${dto.carId}:${dto.startDate}:${dto.endDate}`;
-    const locked = await this.redis.getClient().set(lockKey, userId, 'EX', SLOT_LOCK_TTL, 'NX');
-    if (!locked) throw new ConflictException('السيارة بتتحجز دلوقتي، جرب تواريخ تانية');
+    // 7. Slot Lock (مؤقتاً تم إلغاؤه لأن الدفع عند الاستلام يؤكد الحجز فوراً)
+    // const lockKey = `slot:${dto.carId}:${dto.startDate}:${dto.endDate}`;
+    // const locked = await this.redis.getClient().set(lockKey, userId, 'EX', SLOT_LOCK_TTL, 'NX');
+    // if (!locked) throw new ConflictException('السيارة بتتحجز دلوقتي، جرب تواريخ تانية');
 
     // 8. احسب الفلوس
     const totalDays = this.calcDays(dto.startDate, dto.endDate);
@@ -148,7 +148,7 @@ export class BookingsService {
     // 11. Booking Code — CR-YYMMDD-XXXX
     const bookingCode = this.generateBookingCode();
 
-    // 12. أنشئ الحجز
+    // 12. أنشئ الحجز بحالة مؤكدة مباشرة (الدفع عند الاستلام)
     const booking = await this.prisma.booking.create({
       data: {
         bookingCode,
@@ -177,13 +177,42 @@ export class BookingsService {
         driverLicenseUrl: dto.driverLicenseUrl,
         specialRequests: dto.specialRequests,
         couponId,
-        status: BookingStatus.PENDING_PAYMENT,
+        status: BookingStatus.CONFIRMED,
+        confirmedAt: new Date(),
+        payment: {
+          create: {
+            method: 'CASH',
+            amount: totalAmount,
+            status: 'PENDING',
+          }
+        }
       },
-      include: { car: { include: { owner: true } } },
+      include: { 
+        car: { include: { owner: true } },
+        user: true,
+      },
     });
 
     // 13. لو استخدم كوبون → زيد الـ usedCount
     if (couponId) await this.coupons.incrementUsage(couponId);
+
+    // 14. إرسال إشعارات فورية للعميل وصاحب المعرض بتأكيد الحجز
+    const isPickup = booking.deliveryType === DeliveryType.PICKUP;
+    await this.notifications.send(booking.userId, {
+      type: 'BOOKING_CONFIRMED',
+      title: 'تم تأكيد حجزك! 🎉',
+      body: isPickup
+        ? `كود الاستلام: ${booking.bookingCode} — اتوجه لـ ${booking.car.owner.branchAddress || 'المعرض'}`
+        : `تم تأكيد حجزك لـ ${booking.car.make} ${booking.car.model} — العربية جاية على عنوانك`,
+      data: { bookingId: booking.id, bookingCode: booking.bookingCode },
+    });
+
+    await this.notifications.send(booking.car.owner.userId, {
+      type: 'NEW_BOOKING',
+      title: '🚗 حجز جديد (الدفع عند الاستلام)',
+      body: `${booking.user.name || 'عميل'} حجز ${booking.car.make} ${booking.car.model}${booking.withDriver ? ' (مع سواق)' : ''}`,
+      data: { bookingId: booking.id, bookingCode: booking.bookingCode },
+    });
 
     return {
       ...booking,

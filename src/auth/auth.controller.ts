@@ -2,7 +2,7 @@ import { Controller, Post, Body } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { IsString, Matches, Length } from 'class-validator';
+import { IsString, Matches, Length, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 class SendOtpDto {
@@ -13,14 +13,21 @@ class SendOtpDto {
 }
 
 class VerifyOtpDto {
-  @ApiProperty({ example: '+201012345678' })
+  @ApiProperty({ example: '+201012345678', required: false })
+  @IsOptional()
   @IsString()
-  phone: string;
+  phone?: string;
 
-  @ApiProperty({ example: '123456' })
+  @ApiProperty({ example: '123456', required: false })
+  @IsOptional()
   @IsString()
   @Length(6, 6, { message: 'الكود لازم يكون 6 أرقام' })
-  code: string;
+  code?: string;
+
+  @ApiProperty({ example: 'firebase-id-token-here', required: false })
+  @IsOptional()
+  @IsString()
+  firebaseToken?: string;
 }
 
 @ApiTags('Auth')
@@ -31,16 +38,32 @@ export class AuthController {
   // Rate limit: 3 محاولات كل 10 دقايق لكل IP
   @Throttle({ default: { limit: 3, ttl: 600000 } })
   @Post('send-otp')
-  @ApiOperation({ summary: 'إرسال OTP على رقم التليفون' })
+  @ApiOperation({ summary: 'إرسال OTP على رقم التليفون (متوافق مع النظام القديم)' })
   sendOtp(@Body() dto: SendOtpDto) {
+    return this.authService.sendOtp(dto.phone);
+  }
+
+  // ليتوافق تماماً مع مخطط التتابع المرسل (clientApis.login)
+  @Throttle({ default: { limit: 3, ttl: 600000 } })
+  @Post('login')
+  @ApiOperation({ summary: 'استدعاء تهيئة حساب تسجيل الدخول' })
+  login(@Body() dto: SendOtpDto) {
     return this.authService.sendOtp(dto.phone);
   }
 
   // Rate limit: 5 محاولات كل دقيقة
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('verify-otp')
-  @ApiOperation({ summary: 'التحقق من الكود واستلام الـ JWT' })
+  @ApiOperation({ summary: 'التحقق واستلام الـ JWT (متوافق مع النظام القديم)' })
   verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.authService.verifyOtp(dto.phone, dto.code);
+    return this.authService.verifyOtp(dto.phone, dto.code, dto.firebaseToken);
+  }
+
+  // ليتوافق تماماً مع مخطط التتابع المرسل (clientApis.confirmLogin)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('confirm-login')
+  @ApiOperation({ summary: 'التحقق من توكن Firebase واستلام الـ JWT للمصادقة' })
+  confirmLogin(@Body() dto: VerifyOtpDto) {
+    return this.authService.verifyOtp(dto.phone, dto.code, dto.firebaseToken);
   }
 }
