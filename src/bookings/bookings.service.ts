@@ -44,10 +44,41 @@ export class BookingsService {
 
     // التحقق من تواريخ إتاحة السيارة المحددة من المعرض
     if (car.availableFrom && start < car.availableFrom) {
-      throw new BadRequestException(`السيارة غير متاحة للحجز قبل تاريخ ${car.availableFrom.toISOString().split('T')[0]}`);
+      throw new BadRequestException({
+        ar: `السيارة غير متاحة للحجز قبل تاريخ ${car.availableFrom.toISOString().split('T')[0]}`,
+        en: `Car is not available before ${car.availableFrom.toISOString().split('T')[0]}`,
+      });
     }
     if (car.availableTo && end > car.availableTo) {
-      throw new BadRequestException(`السيارة غير متاحة للحجز بعد تاريخ ${car.availableTo.toISOString().split('T')[0]}`);
+      throw new BadRequestException({
+        ar: `السيارة غير متاحة للحجز بعد تاريخ ${car.availableTo.toISOString().split('T')[0]}`,
+        en: `Car is not available after ${car.availableTo.toISOString().split('T')[0]}`,
+      });
+    }
+
+    // ✔️ فحص وضع إجازة المعرض (Snooze)
+    if (car.owner.snoozeUntil && car.owner.snoozeUntil > new Date()) {
+      throw new BadRequestException({
+        ar: `المعرض غير متاح حالياً (وضع الإجازة) حتى ${car.owner.snoozeUntil.toISOString().split('T')[0]}`,
+        en: `Showroom is currently unavailable (on break) until ${car.owner.snoozeUntil.toISOString().split('T')[0]}`,
+      });
+    }
+
+    // ✔️ فحص بلوكات الحظر اليدوية للسيارة
+    const blockConflict = await this.prisma.carAvailabilityBlock.findFirst({
+      where: {
+        carId: dto.carId,
+        AND: [
+          { startDate: { lte: end } },
+          { endDate:   { gte: start } },
+        ],
+      },
+    });
+    if (blockConflict) {
+      throw new BadRequestException({
+        ar: `السيارة محجوزة / غير متاحة في هذه الفترة${blockConflict.reason ? ` (السبب: ${blockConflict.reason})` : ''}`,
+        en: `Car is blocked / unavailable during this period${blockConflict.reason ? ` (Reason: ${blockConflict.reason})` : ''}`,
+      });
     }
 
     // 3. منع الـ owner من حجز سيارته

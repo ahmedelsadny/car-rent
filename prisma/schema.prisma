@@ -107,6 +107,7 @@ model Owner {
   logoUrl         String?          @map("logo_url")
   coverUrl        String?          @map("cover_url")
   description     String?
+  snoozeUntil     DateTime?        @map("snooze_until")   // وضع الإجازة — لو موجود → كل سياراته غير متاحة حتى هذا التاريخ
   createdAt       DateTime         @default(now()) @map("created_at")
 
   user User  @relation(fields: [userId], references: [id])
@@ -138,10 +139,25 @@ model Car {
   lng            Float?
   createdAt      DateTime  @default(now()) @map("created_at")
 
-  owner    Owner     @relation(fields: [ownerId], references: [id])
-  bookings Booking[]
+  owner              Owner                  @relation(fields: [ownerId], references: [id])
+  bookings           Booking[]
+  availabilityBlocks CarAvailabilityBlock[]
 
   @@map("cars")
+}
+
+// ─── حظر إتاحة السيارة في فترة معينة (يضيفه المعرض يدوياً) ─────────────────
+model CarAvailabilityBlock {
+  id        String   @id @default(uuid())
+  carId     String   @map("car_id")
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+  reason    String?                          // سبب الحظر (صيانة، حجز خارجي، إلخ)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  car Car @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@map("car_availability_blocks")
 }
 
 model Coupon {

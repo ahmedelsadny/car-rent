@@ -10,7 +10,8 @@ import { RedisService } from '../common/redis.service';
 import { CreateCarDto } from './dto/create-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import { GetCarsFilterDto } from './dto/get-cars-filter.dto';
-import { CarStatus } from '@prisma/client';
+import { CreateAvailabilityBlockDto } from './dto/create-availability-block.dto';
+import { BookingStatus, CarStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -65,6 +66,13 @@ export class CarsService {
     const where: any = {
       status: CarStatus.AVAILABLE,
       isApproved: true,
+      // فلترة السنوز: محتاجين لسيارات معارضها مش في وضع الإجازة
+      owner: {
+        OR: [
+          { snoozeUntil: null },
+          { snoozeUntil: { lt: new Date() } },
+        ],
+      },
     };
 
     if (filters.make) {
@@ -355,4 +363,143 @@ export class CarsService {
   private toRad(deg: number): number {
     return (deg * Math.PI) / 180;
   }
+
+  // ────────────────────────────────────────────────────────────
+  // ── إدارة فترات الحظر (Availability Blocks) ──────────────────
+  // ────────────────────────────────────────────────────────────
+
+  /**
+   * إضافة بلوك حظر جديد لسيارة — بيتحقق من عدم تعارضه مع حجوزات نشطة موجودة
+   */
+  async addAvailabilityBlock(userId: string, dto: CreateAvailabilityBlockDto) {
+    const start = new Date(dto.startDate);
+    const end = new Date(dto.endDate);
+
+    if (end <= start) {
+      throw new BadRequestException({
+        ar: 'تاريخ النهاية لازم يكون بعد تاريخ البداية',
+        en: 'End date must be after start date',
+      });
+    }
+
+    // تحقق من صلاحية المعرض على هذه السيارة
+    const car = await this.prisma.car.findUnique({
+      where: { id: dto.carId },
+      include: { owner: true },
+    });
+    if (!car) throw new NotFoundException({
+      ar: 'السيارة غير موجودة',
+      en: 'Car not found',
+    });
+    if (car.owner.userId !== userId) throw new ForbiddenException({
+      ar: 'ليس لديك صلاحية لتعديل هذه السيارة',
+      en: 'You do not own this car',
+    });
+
+    // ✔️ فحص التعارض مع الحجوزات النشطة (CONFIRMED / ACTIVE / IN_DELIVERY)
+    const conflictingBooking = await this.prisma.booking.findFirst({
+      where: {
+        carId: dto.carId,
+        status: {
+          in: [
+            BookingStatus.CONFIRMED,
+            BookingStatus.ACTIVE,
+            BookingStatus.IN_DELIVERY,
+          ],
+        },
+        AND: [
+          { startDate: { lte: end } },
+          { endDate:   { gte: start } },
+        ],
+      },
+    });
+
+    if (conflictingBooking) {
+      throw new ConflictException({
+        ar: `لا يمكن حظر هذه الفترة — يوجد حجز نشط برقم [${conflictingBooking.bookingCode || conflictingBooking.id}]. يرجى إلغاء الحجز أولاً أو التواصل مع العميل.`,
+        en: `Cannot block this period — there is an active booking [${conflictingBooking.bookingCode || conflictingBooking.id}]. Please cancel it first or contact the customer.`,
+        bookingCode: conflictingBooking.bookingCode,
+        bookingId:   conflictingBooking.id,
+      });
+    }
+
+    return this.prisma.carAvailabilityBlock.create({
+      data: {
+        carId: dto.carId,
+        startDate: start,
+        endDate: end,
+        reason: dto.reason,
+      },
+    });
+  }
+
+  /**
+   * جلب كل بلوكات الحظر لسيارة معينة
+   */
+  async getAvailabilityBlocks(userId: string, carId: string) {
+    const car = await this.prisma.car.findUnique({
+      where: { id: carId },
+      include: { owner: true },
+    });
+    if (!car) throw new NotFoundException({ ar: 'السيارة غير موجودة', en: 'Car not found' });
+    if (car.owner.userId !== userId) throw new ForbiddenException({ ar: 'ليس لديك صلاحية', en: 'Forbidden' });
+
+    return this.prisma.carAvailabilityBlock.findMany({
+      where: { carId },
+      orderBy: { startDate: 'asc' },
+    });
+  }
+
+  /**
+   * حذف بلوك حظر معين
+   */
+  async removeAvailabilityBlock(userId: string, blockId: string) {
+    const block = await this.prisma.carAvailabilityBlock.findUnique({
+      where: { id: blockId },
+      include: { car: { include: { owner: true } } },
+    });
+    if (!block) throw new NotFoundException({ ar: 'البلوك غير موجود', en: 'Block not found' });
+    if (block.car.owner.userId !== userId) throw new ForbiddenException({ ar: 'ليس لديك صلاحية', en: 'Forbidden' });
+
+    await this.prisma.carAvailabilityBlock.delete({ where: { id: blockId } });
+    return {
+      ar: 'تم حذف بلوك الحظر بنجاح',
+      en: 'Availability block removed successfully',
+    };
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // ── زرار إجازة المعرض (Showroom Snooze) ─────────────────────
+  // ────────────────────────────────────────────────────────────
+
+  /**
+   * تفعيل / إلغاء وضع الإجازة للمعرض — يخفي كل سياراته من البحث حتى تاريخ معين
+   * @param until — لو null → إلغاء السنوز فوراً
+   */
+  async setShowroomSnooze(userId: string, until: string | null) {
+    const owner = await this.prisma.owner.findUnique({ where: { userId } });
+    if (!owner) throw new NotFoundException({ ar: 'حساب المعرض غير موجود', en: 'Owner account not found' });
+
+    const snoozeUntil = until ? new Date(until) : null;
+
+    const updated = await this.prisma.owner.update({
+      where: { userId },
+      data: { snoozeUntil },
+    });
+
+    if (snoozeUntil) {
+      return {
+        ar: `تم تفعيل وضع الإجازة. جميع سياراتك مخفية حتى ${snoozeUntil.toISOString().split('T')[0]}.`,
+        en: `Snooze activated. All your cars are hidden until ${snoozeUntil.toISOString().split('T')[0]}.`,
+        snoozeUntil: updated.snoozeUntil,
+      };
+    } else {
+      return {
+        ar: 'تم إلغاء وضع الإجازة. سياراتك متاحة للعملاء مرة أخرى.',
+        en: 'Snooze deactivated. Your cars are now visible to customers.',
+        snoozeUntil: null,
+      };
+    }
+  }
 }
+
