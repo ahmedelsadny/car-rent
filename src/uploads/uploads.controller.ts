@@ -5,26 +5,15 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { randomBytes } from 'crypto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-
-// حفظ الملفات على الـ disk في مجلد uploads/
-const storage = diskStorage({
-  destination: join(process.cwd(), 'uploads'),
-  filename: (_req, file, cb) => {
-    const unique = randomBytes(12).toString('hex');
-    cb(null, `${unique}${extname(file.originalname)}`);
-  },
-});
+import { UploadsService } from './uploads.service';
 
 @ApiTags('Uploads')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('uploads')
 export class UploadsController {
-  constructor() {}
+  constructor(private readonly uploadsService: UploadsService) {}
 
   @Post('image')
   @ApiOperation({ summary: 'رفع صورة (بطاقة / رخصة / أي صورة)' })
@@ -37,8 +26,8 @@ export class UploadsController {
       },
     },
   })
-  @UseInterceptors(FileInterceptor('file', { storage }))
-  uploadImage(
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -51,11 +40,6 @@ export class UploadsController {
     )
     file: Express.Multer.File,
   ) {
-    const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
-    return {
-      url: `${baseUrl}/uploads/${file.filename}`,
-      originalName: file.originalname,
-      size: file.size,
-    };
+    return this.uploadsService.uploadFile(file);
   }
 }
