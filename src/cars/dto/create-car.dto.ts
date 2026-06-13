@@ -10,6 +10,7 @@ import {
   IsIn,
   MinLength,
   IsBoolean,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -97,4 +98,20 @@ export class CreateCarDto {
   @IsOptional()
   @IsBoolean()
   driverRequired?: boolean;
+
+  @ApiPropertyOptional({
+    example: '2026-06-01',
+    description: 'تاريخ بداية إتاحة السيارة للإيجار',
+  })
+  @IsOptional()
+  @IsDateString({}, { message: 'تاريخ بداية الإتاحة غير صالح' })
+  availableFrom?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-08-31',
+    description: 'تاريخ نهاية إتاحة السيارة للإيجار',
+  })
+  @IsOptional()
+  @IsDateString({}, { message: 'تاريخ نهاية الإتاحة غير صالح' })
+  availableTo?: string;
 }

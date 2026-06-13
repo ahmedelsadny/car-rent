@@ -6,6 +6,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { SubmitNationalIdDto } from './dto/submit-national-id.dto';
+import { UpdateSystemSettingDto } from './dto/system-settings.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -72,6 +73,23 @@ export class UsersController {
   @ApiOperation({ summary: 'رفض طلب توثيق عميل (للآدمين فقط)' })
   rejectUserVerification(@Param('id') id: string) {
     return this.usersService.rejectUserVerification(id);
+  }
+
+  @Get('admin/settings')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'جلب إعدادات المنصة (للآدمين فقط)' })
+  getSystemSettings() {
+    return this.usersService.getSystemSettings();
+  }
+
+  @Patch('admin/settings/:key')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'تعديل قيمة إعداد بالمنصة (للآدمين فقط)' })
+  updateSystemSetting(
+    @Param('key') key: string,
+    @Body() dto: UpdateSystemSettingDto,
+  ) {
+    return this.usersService.updateSystemSetting(key, dto.value);
   }
 }
 

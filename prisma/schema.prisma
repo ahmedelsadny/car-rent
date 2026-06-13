@@ -104,6 +104,9 @@ model Owner {
   bankAccount     String?          @map("bank_account")
   subscriptionTier SubscriptionTier @default(FREE) @map("subscription_tier")
   isVerified      Boolean          @default(false) @map("is_verified")
+  logoUrl         String?          @map("logo_url")
+  coverUrl        String?          @map("cover_url")
+  description     String?
   createdAt       DateTime         @default(now()) @map("created_at")
 
   user User  @relation(fields: [userId], references: [id])
@@ -129,6 +132,8 @@ model Car {
   status         CarStatus @default(AVAILABLE)
   driverRequired Boolean   @default(false) @map("driver_required") // لو true → لا تُأجَّر إلا بسواق
   isApproved     Boolean   @default(false) @map("is_approved")
+  availableFrom  DateTime? @map("available_from")
+  availableTo    DateTime? @map("available_to")
   lat            Float?
   lng            Float?
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -187,7 +192,8 @@ model Booking {
   insuranceType      InsuranceType @default(BASIC) @map("insurance_type")
 
   // ── Documents ──
-  nationalIdImageUrl String?       @map("national_id_image_url")
+  nationalIdFrontUrl String?       @map("national_id_front_url")
+  nationalIdBackUrl  String?       @map("national_id_back_url")
   driverLicenseUrl   String?       @map("driver_license_url")
 
   // ── Extra ──
@@ -293,4 +299,11 @@ model NotificationTemplate {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("notification_templates")
+}
+
+model SystemSetting {
+  key   String @id
+  value String
+
+  @@map("system_settings")
 }

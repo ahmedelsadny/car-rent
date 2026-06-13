@@ -195,4 +195,20 @@ export class UsersService {
       },
     };
   }
+
+  // جلب إعدادات النظام (Admin only)
+  async getSystemSettings() {
+    return this.prisma.systemSetting.findMany({
+      orderBy: { key: 'asc' },
+    });
+  }
+
+  // تحديث إعداد معين بالنظام (Admin only)
+  async updateSystemSetting(key: string, value: string) {
+    return this.prisma.systemSetting.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value },
+    });
+  }
 }

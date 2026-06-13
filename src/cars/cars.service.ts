@@ -50,6 +50,8 @@ export class CarsService {
         lng: dto.lng,
         driverRequired: dto.driverRequired ?? false,
         status: CarStatus.AVAILABLE,
+        availableFrom: dto.availableFrom ? new Date(dto.availableFrom) : null,
+        availableTo: dto.availableTo ? new Date(dto.availableTo) : null,
       },
     });
   }
@@ -232,6 +234,12 @@ export class CarsService {
     // إذا الـ status موجود، نعمله cast صح
     const data: any = { ...dto };
     if (dto.status) data.status = dto.status as CarStatus;
+    if (dto.availableFrom !== undefined) {
+      data.availableFrom = dto.availableFrom ? new Date(dto.availableFrom) : null;
+    }
+    if (dto.availableTo !== undefined) {
+      data.availableTo = dto.availableTo ? new Date(dto.availableTo) : null;
+    }
 
     return this.prisma.car.update({
       where: { id: carId },

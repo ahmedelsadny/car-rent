@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
+import { UpdateOwnerDto } from './dto/update-owner.dto';
 import { BookingStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -22,6 +23,9 @@ export class OwnersService {
         businessName: dto.businessName,
         commercialReg: dto.commercialReg,
         address: dto.address,
+        logoUrl: dto.logoUrl,
+        coverUrl: dto.coverUrl,
+        description: dto.description,
       },
     });
   }
@@ -200,5 +204,16 @@ export class OwnersService {
     });
 
     return updated;
+  }
+
+  // تحديث الملف الشخصي للمعرض
+  async updateProfile(userId: string, dto: UpdateOwnerDto) {
+    const owner = await this.prisma.owner.findUnique({ where: { userId } });
+    if (!owner) throw new NotFoundException('المعرض غير موجود');
+
+    return this.prisma.owner.update({
+      where: { userId },
+      data: dto,
+    });
   }
 }

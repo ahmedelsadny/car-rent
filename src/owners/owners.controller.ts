@@ -5,6 +5,8 @@ import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { OwnersService } from './owners.service';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
+import { UpdateOwnerDto } from './dto/update-owner.dto';
+import { OwnerGuard } from '../common/guards/owner.guard';
 
 @ApiTags('Owners')
 @ApiBearerAuth()
@@ -26,6 +28,16 @@ export class OwnersController {
   @ApiOperation({ summary: 'بروفايل الـ owner' })
   getProfile(@CurrentUser('id') userId: string) {
     return this.ownersService.getProfile(userId);
+  }
+
+  @Patch('me')
+  @UseGuards(OwnerGuard)
+  @ApiOperation({ summary: 'تعديل الملف الشخصي للمعرض' })
+  updateProfile(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateOwnerDto,
+  ) {
+    return this.ownersService.updateProfile(userId, dto);
   }
 
   @Get('me/dashboard')

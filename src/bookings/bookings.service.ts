@@ -42,15 +42,35 @@ export class BookingsService {
     });
     if (!car || !car.isApproved) throw new NotFoundException('Car not found');
 
+    // التحقق من تواريخ إتاحة السيارة المحددة من المعرض
+    if (car.availableFrom && start < car.availableFrom) {
+      throw new BadRequestException(`السيارة غير متاحة للحجز قبل تاريخ ${car.availableFrom.toISOString().split('T')[0]}`);
+    }
+    if (car.availableTo && end > car.availableTo) {
+      throw new BadRequestException(`السيارة غير متاحة للحجز بعد تاريخ ${car.availableTo.toISOString().split('T')[0]}`);
+    }
+
     // 3. منع الـ owner من حجز سيارته
     if (car.owner.userId === userId) throw new BadRequestException('لا يمكنك حجز سيارتك الخاصة');
 
-    // 4. لو العربية بتخرج بسواق فقط → withDriver لازم يكون true
+    // جلب إعدادات النظام من قاعدة البيانات
+    const settings = await this.prisma.systemSetting.findMany();
+    const settingsMap = new Map(settings.map(s => [s.key, s.value]));
+    const driverOptionEnabled = settingsMap.get('driver_option_enabled') === 'true';
+    const driverFeePerDay = parseFloat(settingsMap.get('driver_fee_per_day') || '150');
+    const deliveryHomeFee = parseFloat(settingsMap.get('delivery_home_fee') || '200');
+
+    // 4. التحقق من إتاحة خيار السائق
+    if ((dto.withDriver || car.driverRequired) && !driverOptionEnabled) {
+      throw new BadRequestException('خيار السائق غير متاح حالياً من قبل الإدارة');
+    }
+
+    // 5. لو العربية بتخرج بسواق فقط → withDriver لازم يكون true
     if (car.driverRequired && !dto.withDriver) {
       throw new BadRequestException('هذه السيارة لا تُأجَّر إلا بسواق');
     }
 
-    // 5. لو HOME → لازم يحدد الموقع
+    // 6. لو HOME → لازم يحدد الموقع
     if (dto.deliveryType === 'HOME' && (!dto.deliveryLat || !dto.deliveryLng)) {
       throw new BadRequestException('لازم تحدد موقعك على الخريطة');
     }
@@ -67,20 +87,18 @@ export class BookingsService {
     const totalDays = this.calcDays(dto.startDate, dto.endDate);
     const subtotal = car.pricePerDay * totalDays;
 
-    // رسوم التوصيل (من env)
+    // رسوم التوصيل
     const deliveryFee = dto.deliveryType === 'HOME'
-      ? this.config.get<number>('DELIVERY_HOME_FEE', 200)
+      ? deliveryHomeFee
       : 0;
 
-    // رسوم السواق (من env × أيام)
+    // رسوم السواق
     const driverFee = dto.withDriver
-      ? this.config.get<number>('DRIVER_FEE_PER_DAY', 150) * totalDays
+      ? driverFeePerDay * totalDays
       : 0;
 
-    // رسوم التأمين الشامل (من env × أيام)
-    const insuranceFee = dto.insuranceType === 'COMPREHENSIVE'
-      ? this.config.get<number>('INSURANCE_COMPREHENSIVE_FEE', 100) * totalDays
-      : 0;
+    // رسوم التأمين (تأمين أساسي مجاني دائماً)
+    const insuranceFee = 0;
 
     // 9. كوبون
     let discountAmount = 0;
@@ -123,7 +141,8 @@ export class BookingsService {
         withDriver: dto.withDriver,
         additionalDriver: dto.additionalDriver,
         insuranceType: (dto.insuranceType || 'BASIC') as InsuranceType,
-        nationalIdImageUrl: dto.nationalIdImageUrl,
+        nationalIdFrontUrl: dto.nationalIdFrontUrl,
+        nationalIdBackUrl: dto.nationalIdBackUrl,
         driverLicenseUrl: dto.driverLicenseUrl,
         specialRequests: dto.specialRequests,
         couponId,

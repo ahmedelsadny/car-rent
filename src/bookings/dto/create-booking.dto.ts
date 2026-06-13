@@ -51,15 +51,19 @@ export class CreateBookingDto {
   additionalDriver?: string;
 
   // ── التأمين ──
-  @ApiProperty({ enum: ['BASIC', 'COMPREHENSIVE'], example: 'BASIC', required: false })
+  @ApiProperty({ enum: ['BASIC'], example: 'BASIC', required: false })
   @IsOptional()
-  @IsEnum(['BASIC', 'COMPREHENSIVE'])
-  insuranceType?: 'BASIC' | 'COMPREHENSIVE';
+  @IsEnum(['BASIC'])
+  insuranceType?: 'BASIC';
 
   // ── وثائق (URLs بعد الرفع على /uploads/image) ──
-  @ApiProperty({ example: 'http://localhost:3000/uploads/abc123.jpg' })
+  @ApiProperty({ example: 'http://localhost:3000/uploads/national_id_front.jpg' })
   @IsUrl()
-  nationalIdImageUrl: string;
+  nationalIdFrontUrl: string;
+
+  @ApiProperty({ example: 'http://localhost:3000/uploads/national_id_back.jpg' })
+  @IsUrl()
+  nationalIdBackUrl: string;
 
   @ApiProperty({ example: 'http://localhost:3000/uploads/def456.jpg', required: false })
   @ValidateIf(o => !o.withDriver)

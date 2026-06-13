@@ -5,6 +5,25 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database...');
 
+  // ── System Settings ──
+  await prisma.systemSetting.upsert({
+    where: { key: 'driver_option_enabled' },
+    update: {},
+    create: { key: 'driver_option_enabled', value: 'true' },
+  });
+
+  await prisma.systemSetting.upsert({
+    where: { key: 'driver_fee_per_day' },
+    update: {},
+    create: { key: 'driver_fee_per_day', value: '150' },
+  });
+
+  await prisma.systemSetting.upsert({
+    where: { key: 'delivery_home_fee' },
+    update: {},
+    create: { key: 'delivery_home_fee', value: '200' },
+  });
+
   // ── Users ──
   const user1 = await prisma.user.upsert({
     where: { phone: '+201011111111' },
