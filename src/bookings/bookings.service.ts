@@ -116,7 +116,16 @@ export class BookingsService {
 
     // 8. احسب الفلوس
     const totalDays = this.calcDays(dto.startDate, dto.endDate);
-    const subtotal = car.pricePerDay * totalDays;
+    
+    // حساب سعر اليوم بناءً على مدة الحجز (متدرج)
+    let dailyPrice = car.pricePerDay;
+    if (totalDays >= 30) {
+      dailyPrice = car.pricePerMonth ?? car.pricePerWeek ?? car.pricePerDay;
+    } else if (totalDays >= 7) {
+      dailyPrice = car.pricePerWeek ?? car.pricePerDay;
+    }
+    
+    const subtotal = dailyPrice * totalDays;
 
     // رسوم التوصيل
     const deliveryFee = dto.deliveryType === 'HOME'
@@ -161,7 +170,7 @@ export class BookingsService {
         deliveryFee,
         driverFee,
         insuranceFee,
-        deposit: car.depositAmount,
+        deposit: 0,
         discountAmount,
         platformCommission: commission,
         ownerPayout,

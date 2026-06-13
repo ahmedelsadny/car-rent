@@ -127,16 +127,15 @@ model Car {
   transmission   String    @default("automatic")
   seats          Int       @default(5)
   pricePerDay    Float     @map("price_per_day")
-  depositAmount  Float     @default(0) @map("deposit_amount")
+  pricePerWeek   Float?    @map("price_per_week")
+  pricePerMonth  Float?    @map("price_per_month")
   features       String[]  @default([])
   imageUrls      String[]  @default([]) @map("image_urls")
   status         CarStatus @default(AVAILABLE)
-  driverRequired Boolean   @default(false) @map("driver_required") // لو true → لا تُأجَّر إلا بسواق
+  driverRequired Boolean   @default(false) @map("driver_required") // لو true ← لا تُأجَّر إلا بسواق
   isApproved     Boolean   @default(false) @map("is_approved")
   availableFrom  DateTime? @map("available_from")
   availableTo    DateTime? @map("available_to")
-  lat            Float?
-  lng            Float?
   createdAt      DateTime  @default(now()) @map("created_at")
 
   owner              Owner                  @relation(fields: [ownerId], references: [id])

@@ -85,12 +85,11 @@ async function main() {
       transmission: 'automatic',
       seats: 5,
       pricePerDay: 450,
-      depositAmount: 1000,
+      pricePerWeek: 400,
+      pricePerMonth: 350,
       features: ['AC', 'بلوتوث', 'كاميرا خلفية', 'USB'],
       imageUrls: ['https://example.com/corolla1.jpg'],
       status: 'AVAILABLE',
-      lat: 30.0444,
-      lng: 31.2357,
     },
   });
 
@@ -105,12 +104,11 @@ async function main() {
       transmission: 'automatic',
       seats: 5,
       pricePerDay: 380,
-      depositAmount: 800,
+      pricePerWeek: 340,
+      pricePerMonth: 300,
       features: ['AC', 'بلوتوث', 'GPS'],
       imageUrls: ['https://example.com/elantra1.jpg'],
       status: 'AVAILABLE',
-      lat: 30.0556,
-      lng: 31.2244,
     },
   });
 
@@ -125,12 +123,11 @@ async function main() {
       transmission: 'automatic',
       seats: 5,
       pricePerDay: 650,
-      depositAmount: 1500,
+      pricePerWeek: 600,
+      pricePerMonth: 550,
       features: ['AC', 'بلوتوث', 'GPS', 'فتحة سقف', 'مقاعد جلد'],
       imageUrls: ['https://example.com/sportage1.jpg'],
       status: 'AVAILABLE',
-      lat: 30.0600,
-      lng: 31.2400,
     },
   });
 

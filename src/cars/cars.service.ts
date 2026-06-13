@@ -42,13 +42,12 @@ export class CarsService {
         licensePlate: dto.licensePlate,
         color: dto.color,
         pricePerDay: dto.pricePerDay,
-        depositAmount: dto.depositAmount ?? 0,
+        pricePerWeek: dto.pricePerWeek ?? null,
+        pricePerMonth: dto.pricePerMonth ?? null,
         features: dto.features ?? [],
         imageUrls: dto.imageUrls ?? [],
         transmission: dto.transmission ?? 'automatic',
         seats: dto.seats ?? 5,
-        lat: dto.lat,
-        lng: dto.lng,
         driverRequired: dto.driverRequired ?? false,
         status: CarStatus.AVAILABLE,
         availableFrom: dto.availableFrom ? new Date(dto.availableFrom) : null,
@@ -143,29 +142,12 @@ export class CarsService {
         ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length
         : 0;
 
-      // حساب المسافة إن كانت الإحداثيات موجودة
-      let distanceKm: number | null = null;
-      if (filters.lat && filters.lng && car.lat && car.lng) {
-        distanceKm = this.calcDistance(filters.lat, filters.lng, car.lat, car.lng);
-      }
-
       const { bookings, ...carData } = car;
-      return { ...carData, avgRating: Math.round(avgRating * 10) / 10, distanceKm };
+      return { ...carData, avgRating: Math.round(avgRating * 10) / 10 };
     });
 
-    // ترتيب بالمسافة إن كانت الإحداثيات موجودة
-    if (filters.lat && filters.lng) {
-      carsWithRating.sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
-    }
-
-    // تصفية بالمسافة المحددة
-    const filtered =
-      filters.lat && filters.lng && filters.distance
-        ? carsWithRating.filter((c) => c.distanceKm !== null && c.distanceKm <= filters.distance!)
-        : carsWithRating;
-
     return {
-      data: filtered,
+      data: carsWithRating,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
@@ -345,24 +327,7 @@ export class CarsService {
     return updated;
   }
 
-  // ── حساب المسافة بين نقطتين (Haversine formula) ──
-  private calcDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6371; // نصف قطر الأرض بالكيلومترات
-    const dLat = this.toRad(lat2 - lat1);
-    const dLng = this.toRad(lng2 - lng1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRad(lat1)) *
-        Math.cos(this.toRad(lat2)) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return Math.round(R * c * 10) / 10;
-  }
 
-  private toRad(deg: number): number {
-    return (deg * Math.PI) / 180;
-  }
 
   // ────────────────────────────────────────────────────────────
   // ── إدارة فترات الحظر (Availability Blocks) ──────────────────

@@ -47,12 +47,19 @@ export class CreateCarDto {
   @Type(() => Number)
   pricePerDay: number;
 
-  @ApiPropertyOptional({ example: 1000 })
+  @ApiPropertyOptional({ example: 400, description: 'سعر اليوم للإيجار الأسبوعي (7-29 يوم)' })
   @IsOptional()
   @IsNumber()
-  @Min(0)
+  @Min(1)
   @Type(() => Number)
-  depositAmount?: number;
+  pricePerWeek?: number;
+
+  @ApiPropertyOptional({ example: 350, description: 'سعر اليوم للإيجار الشهري (30+ يوم)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  pricePerMonth?: number;
 
   @ApiPropertyOptional({ example: ['AC', 'بلوتوث', 'GPS'] })
   @IsOptional()
@@ -78,18 +85,6 @@ export class CreateCarDto {
   @Max(15)
   @Type(() => Number)
   seats?: number;
-
-  @ApiPropertyOptional({ example: 30.0444 })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  lat?: number;
-
-  @ApiPropertyOptional({ example: 31.2357 })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  lng?: number;
 
   @ApiPropertyOptional({
     example: false,

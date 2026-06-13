@@ -32,25 +32,7 @@ export class GetCarsFilterDto {
   @Type(() => Number)
   maxPrice?: number;
 
-  @ApiPropertyOptional({ example: 30.0444, description: 'خط العرض للبحث الجغرافي' })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  lat?: number;
 
-  @ApiPropertyOptional({ example: 31.2357, description: 'خط الطول للبحث الجغرافي' })
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  lng?: number;
-
-  @ApiPropertyOptional({ example: 20, description: 'نطاق البحث بالكيلومترات (افتراضي 20km)' })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(100)
-  @Type(() => Number)
-  distance?: number;
 
   @ApiPropertyOptional({ example: 1, description: 'رقم الصفحة للـ pagination' })
   @IsOptional()
