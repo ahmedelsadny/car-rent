@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { OwnersService } from './owners.service';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
@@ -37,5 +38,28 @@ export class OwnersController {
   @ApiOperation({ summary: 'آخر الحجوزات' })
   getBookings(@CurrentUser('id') userId: string) {
     return this.ownersService.getRecentBookings(userId);
+  }
+
+  // ─── مسارات الآدمين (تحتاج JWT + AdminGuard) ─────────────────────────────
+
+  @Get('admin/pending')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'جلب المعارض المعلقة (للآدمين فقط)' })
+  findPendingOwners() {
+    return this.ownersService.findPendingOwners();
+  }
+
+  @Patch(':id/verify')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'توثيق معرض (للآدمين فقط)' })
+  verifyOwner(@Param('id') id: string) {
+    return this.ownersService.verifyOwner(id);
+  }
+
+  @Patch(':id/unverify')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'إلغاء توثيق معرض (للآدمين فقط)' })
+  unverifyOwner(@Param('id') id: string) {
+    return this.ownersService.unverifyOwner(id);
   }
 }

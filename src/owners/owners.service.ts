@@ -2,10 +2,14 @@ import { Injectable, ConflictException, NotFoundException } from '@nestjs/common
 import { PrismaService } from '../common/prisma.service';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { BookingStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class OwnersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   // تسجيل معرض جديد
   async register(userId: string, dto: RegisterOwnerDto) {
@@ -141,5 +145,60 @@ export class OwnersService {
       orderBy: { createdAt: 'desc' },
       take: 30,
     });
+  }
+
+  // ─── مسارات الآدمين لإدارة وتوثيق المعارض (Admin only) ──────────────────────
+
+  // جلب المعارض المعلقة (غير الموثقة)
+  async findPendingOwners() {
+    return this.prisma.owner.findMany({
+      where: { isVerified: false },
+      include: {
+        user: { select: { name: true, phone: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // توثيق المعرض
+  async verifyOwner(id: string) {
+    const owner = await this.prisma.owner.findUnique({ where: { id } });
+    if (!owner) throw new NotFoundException('المعرض غير موجود');
+
+    const updated = await this.prisma.owner.update({
+      where: { id },
+      data: { isVerified: true },
+    });
+
+    // إرسال إشعار لصاحب المعرض بالتوثيق
+    await this.notifications.send(owner.userId, {
+      type: 'OWNER_VERIFIED',
+      title: 'تم توثيق معرضك بنجاح! 🌟',
+      body: `تهانينا! تم التحقق من مستندات معرضك "${owner.businessName}" وتوثيقه بالكامل على المنصة. يمكنك الآن استقبال الحجوزات ونشر السيارات.`,
+      data: { ownerId: owner.id },
+    });
+
+    return updated;
+  }
+
+  // إلغاء توثيق المعرض
+  async unverifyOwner(id: string) {
+    const owner = await this.prisma.owner.findUnique({ where: { id } });
+    if (!owner) throw new NotFoundException('المعرض غير موجود');
+
+    const updated = await this.prisma.owner.update({
+      where: { id },
+      data: { isVerified: false },
+    });
+
+    // إرسال إشعار لصاحب المعرض بإلغاء التوثيق
+    await this.notifications.send(owner.userId, {
+      type: 'OWNER_UNVERIFIED',
+      title: 'تنبيه: إلغاء توثيق المعرض ⚠️',
+      body: `تم إلغاء توثيق معرضك "${owner.businessName}" من قبل الإدارة. يرجى التواصل مع الدعم الفني للمزيد من التفاصيل.`,
+      data: { ownerId: owner.id },
+    });
+
+    return updated;
   }
 }

@@ -40,7 +40,7 @@ export class BookingsService {
       where: { id: dto.carId },
       include: { owner: true },
     });
-    if (!car) throw new NotFoundException('Car not found');
+    if (!car || !car.isApproved) throw new NotFoundException('Car not found');
 
     // 3. منع الـ owner من حجز سيارته
     if (car.owner.userId === userId) throw new BadRequestException('لا يمكنك حجز سيارتك الخاصة');

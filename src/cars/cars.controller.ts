@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OwnerGuard } from '../common/guards/owner.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ParseUUIDPipe } from '../common/pipes/parse-uuid.pipe';
 import { CarsService } from './cars.service';
@@ -57,6 +58,32 @@ export class CarsController {
   @ApiOperation({ summary: 'جلب كل سيارات المعرض الحالي' })
   findOwnerCars(@CurrentUser('id') userId: string) {
     return this.carsService.findOwnerCars(userId);
+  }
+
+  // ─── مسارات الآدمين (تحتاج JWT + AdminGuard) ─────────────────────────────
+
+  @Get('admin/pending')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiOperation({ summary: 'جلب السيارات التي تنتظر الموافقة (للآدمين فقط)' })
+  findPendingCars() {
+    return this.carsService.findPendingCars();
+  }
+
+  @Patch(':id/approve')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiOperation({ summary: 'الموافقة على نشر سيارة (للآدمين فقط)' })
+  approveCar(@Param('id', ParseUUIDPipe) id: string) {
+    return this.carsService.approveCar(id);
+  }
+
+  @Patch(':id/reject')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiOperation({ summary: 'رفض نشر سيارة (للآدمين فقط)' })
+  rejectCar(@Param('id', ParseUUIDPipe) id: string) {
+    return this.carsService.rejectCar(id);
   }
 
   @Post()

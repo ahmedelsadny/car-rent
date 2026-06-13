@@ -1,6 +1,7 @@
-import { Controller, Get, Patch, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Body, UseGuards, Param } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -41,6 +42,36 @@ export class UsersController {
   @ApiOperation({ summary: 'إحصائياتي كعميل' })
   getStats(@CurrentUser('id') userId: string) {
     return this.usersService.getStats(userId);
+  }
+
+  // ─── مسارات الآدمين (تحتاج JWT + AdminGuard) ─────────────────────────────
+
+  @Get('admin/dashboard-stats')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'إحصائيات لوحة التحكم الكاملة للمنصة (للآدمين فقط)' })
+  getAdminDashboardStats() {
+    return this.usersService.getAdminDashboardStats();
+  }
+
+  @Get('admin/pending-verification')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'جلب طلبات التوثيق المعلقة للعملاء (للآدمين فقط)' })
+  findPendingVerifications() {
+    return this.usersService.findPendingVerifications();
+  }
+
+  @Patch(':id/verify')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'توثيق حساب عميل (للآدمين فقط)' })
+  verifyUser(@Param('id') id: string) {
+    return this.usersService.verifyUser(id);
+  }
+
+  @Patch(':id/reject-verification')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'رفض طلب توثيق عميل (للآدمين فقط)' })
+  rejectUserVerification(@Param('id') id: string) {
+    return this.usersService.rejectUserVerification(id);
   }
 }
 

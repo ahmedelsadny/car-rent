@@ -11,12 +11,14 @@ import { CreateCarDto } from './dto/create-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import { GetCarsFilterDto } from './dto/get-cars-filter.dto';
 import { CarStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class CarsService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
+    private notifications: NotificationsService,
   ) {}
 
   // ── إضافة سيارة جديدة (خاص بالمعارض) ──
@@ -60,6 +62,7 @@ export class CarsService {
 
     const where: any = {
       status: CarStatus.AVAILABLE,
+      isApproved: true,
     };
 
     if (filters.make) {
@@ -189,7 +192,7 @@ export class CarsService {
       },
     });
 
-    if (!car) throw new NotFoundException('السيارة غير موجودة');
+    if (!car || !car.isApproved) throw new NotFoundException('السيارة غير موجودة');
 
     const allReviews = car.bookings.flatMap((b) => b.reviews);
     const avgRating = allReviews.length
@@ -259,6 +262,71 @@ export class CarsService {
 
     await this.prisma.car.delete({ where: { id: carId } });
     return { message: 'تم حذف السيارة بنجاح' };
+  }
+
+  // ── جلب السيارات التي تنتظر الموافقة (Admin only) ──
+  async findPendingCars() {
+    return this.prisma.car.findMany({
+      where: { isApproved: false },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            businessName: true,
+            user: { select: { name: true, phone: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ── قبول نشر السيارة (Admin only) ──
+  async approveCar(id: string) {
+    const car = await this.prisma.car.findUnique({
+      where: { id },
+      include: { owner: true },
+    });
+    if (!car) throw new NotFoundException('السيارة غير موجودة');
+
+    const updated = await this.prisma.car.update({
+      where: { id },
+      data: { isApproved: true },
+    });
+
+    // إرسال إشعار للمعرض
+    await this.notifications.send(car.owner.userId, {
+      type: 'CAR_PUBLISH_APPROVED',
+      title: 'تم قبول سيارتك! 🎉',
+      body: `تمت الموافقة على نشر سيارتك ${car.make} ${car.model} بنجاح وهي الآن متاحة للعملاء.`,
+      data: { carId: car.id },
+    });
+
+    return updated;
+  }
+
+  // ── رفض/إلغاء قبول نشر السيارة (Admin only) ──
+  async rejectCar(id: string) {
+    const car = await this.prisma.car.findUnique({
+      where: { id },
+      include: { owner: true },
+    });
+    if (!car) throw new NotFoundException('السيارة غير موجودة');
+
+    const updated = await this.prisma.car.update({
+      where: { id },
+      data: { isApproved: false },
+    });
+
+    // إرسال إشعار للمعرض
+    await this.notifications.send(car.owner.userId, {
+      type: 'CAR_PUBLISH_REJECTED',
+      title: 'تم رفض نشر سيارتك ⚠️',
+      body: `للأسف تم رفض نشر سيارتك ${car.make} ${car.model} من قبل الإدارة.`,
+      data: { carId: car.id },
+    });
+
+    return updated;
   }
 
   // ── حساب المسافة بين نقطتين (Haversine formula) ──

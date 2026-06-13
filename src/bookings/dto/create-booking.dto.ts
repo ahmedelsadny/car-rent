@@ -61,9 +61,10 @@ export class CreateBookingDto {
   @IsUrl()
   nationalIdImageUrl: string;
 
-  @ApiProperty({ example: 'http://localhost:3000/uploads/def456.jpg' })
+  @ApiProperty({ example: 'http://localhost:3000/uploads/def456.jpg', required: false })
+  @ValidateIf(o => !o.withDriver)
   @IsUrl()
-  driverLicenseUrl: string;
+  driverLicenseUrl?: string;
 
   // ── كوبون ──
   @ApiProperty({ example: 'SUMMER20', required: false })

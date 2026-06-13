@@ -128,6 +128,7 @@ model Car {
   imageUrls      String[]  @default([]) @map("image_urls")
   status         CarStatus @default(AVAILABLE)
   driverRequired Boolean   @default(false) @map("driver_required") // لو true → لا تُأجَّر إلا بسواق
+  isApproved     Boolean   @default(false) @map("is_approved")
   lat            Float?
   lng            Float?
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -281,4 +282,15 @@ model DeviceToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("device_tokens")
+}
+
+model NotificationTemplate {
+  id        String   @id @default(uuid())
+  type      String   @unique
+  title     String
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_templates")
 }

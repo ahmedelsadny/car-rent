@@ -1,8 +1,10 @@
-import { Controller, Get, Patch, Param, Body, UseGuards, Post } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, UseGuards, Post, Delete } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { NotificationsService } from './notifications.service';
+import { CreateNotificationTemplateDto } from './dto/notification-template.dto';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -40,5 +42,28 @@ export class NotificationsController {
     @Body() body: { token: string; platform: 'ios' | 'android' },
   ) {
     return this.notificationsService.registerDeviceToken(userId, body.token, body.platform);
+  }
+
+  // ─── مسارات الآدمين لإدارة قوالب الإشعارات (Admin only) ──────────────────────
+
+  @Get('admin/templates')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'جلب كل قوالب الإشعارات' })
+  getTemplates() {
+    return this.notificationsService.getTemplates();
+  }
+
+  @Post('admin/templates')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'إنشاء أو تحديث قالب إشعار' })
+  upsertTemplate(@Body() dto: CreateNotificationTemplateDto) {
+    return this.notificationsService.upsertTemplate(dto);
+  }
+
+  @Delete('admin/templates/:type')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'حذف قالب إشعار' })
+  deleteTemplate(@Param('type') type: string) {
+    return this.notificationsService.deleteTemplate(type);
   }
 }
