@@ -121,21 +121,26 @@ export class CarsService {
       this.prisma.car.count({ where }),
     ]);
 
-    // ── Car Cooldown Filter ──
-    // بنستخدم mget مرة واحدة بدل exists لكل سيارة على حدة (أداء أفضل)
+    // ── Car Cooldown & Checkout Lock Filter ──
     const cooldownKeys = cars.map((c) => `cooldown:${c.id}`);
-    const cooldownValues = cooldownKeys.length
-      ? await this.redis.getClient().mget(...cooldownKeys)
+    const lockKeys = cars.map((c) => `checkout-lock:${c.id}`);
+    const allKeys = [...cooldownKeys, ...lockKeys];
+    const allValues = allKeys.length
+      ? await this.redis.getClient().mget(...allKeys)
       : [];
-    const coolingSet = new Set(
-      cars
-        .filter((_, i) => cooldownValues[i] !== null)
-        .map((c) => c.id),
-    );
+
+    const inactiveSet = new Set<string>();
+    for (let i = 0; i < cars.length; i++) {
+      const cooldownVal = allValues[i];
+      const lockVal = allValues[i + cars.length];
+      if (cooldownVal !== null || lockVal !== null) {
+        inactiveSet.add(cars[i].id);
+      }
+    }
 
     // حساب التقييم المتوسط لكل سيارة
     const carsWithRating = cars
-      .filter((car) => !coolingSet.has(car.id)) // إزالة السيارات في فترة الـ cooldown
+      .filter((car) => !inactiveSet.has(car.id)) // إزالة السيارات المعطلة مؤقتاً
       .map((car) => {
       const allRatings = car.bookings.flatMap((b) => b.reviews.map((r) => r.rating));
       const avgRating = allRatings.length
@@ -262,6 +267,16 @@ export class CarsService {
     return { message: 'تم حذف السيارة بنجاح' };
   }
 
+  // ── قفل السيارة مؤقتاً أثناء التشيك أوت (10 دقائق) ──
+  async setCheckoutLock(userId: string, carId: string) {
+    const car = await this.prisma.car.findUnique({ where: { id: carId } });
+    if (!car || !car.isApproved) {
+      throw new NotFoundException('السيارة غير موجودة');
+    }
+    await this.redis.getClient().set(`checkout-lock:${carId}`, userId, 'EX', 600);
+    return { success: true, message: 'Car locked for checkout for 10 minutes.' };
+  }
+
   // ── جلب السيارات التي تنتظر الموافقة (Admin only) ──
   async findPendingCars() {
     return this.prisma.car.findMany({
@@ -361,7 +376,7 @@ export class CarsService {
       en: 'You do not own this car',
     });
 
-    // ✔️ فحص التعارض مع الحجوزات النشطة (CONFIRMED / ACTIVE / IN_DELIVERY)
+    // ✔️ فحص التعارض مع الحجوزات النشطة (CONFIRMED / ACTIVE / IN_DELIVERY) - مقارنة حصرية لمنع تعارض الأطراف
     const conflictingBooking = await this.prisma.booking.findFirst({
       where: {
         carId: dto.carId,
@@ -373,8 +388,8 @@ export class CarsService {
           ],
         },
         AND: [
-          { startDate: { lte: end } },
-          { endDate:   { gte: start } },
+          { startDate: { lt: end } },
+          { endDate:   { gt: start } },
         ],
       },
     });

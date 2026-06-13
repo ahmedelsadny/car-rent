@@ -61,6 +61,17 @@ export class CarsController {
     return this.carsService.findOne(id);
   }
 
+  @Post(':id/checkout-lock')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'قفل السيارة مؤقتاً لمدة 10 دقائق أثناء التشيك أوت' })
+  setCheckoutLock(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.carsService.setCheckoutLock(userId, id);
+  }
+
   // ─── مسارات المعارض (تحتاج JWT + OwnerGuard) ─────────────────────────────
 
   @Get('owner/my-cars')

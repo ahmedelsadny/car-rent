@@ -24,6 +24,18 @@ async function main() {
     create: { key: 'delivery_home_fee', value: '200' },
   });
 
+  await prisma.systemSetting.upsert({
+    where: { key: 'commission_rate_short_term' },
+    update: {},
+    create: { key: 'commission_rate_short_term', value: '0.05' },
+  });
+
+  await prisma.systemSetting.upsert({
+    where: { key: 'commission_rate_long_term' },
+    update: {},
+    create: { key: 'commission_rate_long_term', value: '0.03' },
+  });
+
   // ── Users ──
   const user1 = await prisma.user.upsert({
     where: { phone: '+201011111111' },
