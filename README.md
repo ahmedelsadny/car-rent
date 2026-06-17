@@ -7,7 +7,7 @@ Car rental marketplace API built with NestJS + PostgreSQL + Redis.
 - **Framework**: NestJS (TypeScript)
 - **Database**: PostgreSQL via Prisma ORM
 - **Cache / Locks**: Redis (ioredis)
-- **Auth**: JWT + OTP (SMS via Vonage)
+- **Auth**: JWT + Firebase Auth OTP (Phone Sign-In)
 - **Payments**: Paymob / Fawry
 - **Push**: Firebase FCM
 - **Storage**: Cloudflare R2 (صور العربيات)

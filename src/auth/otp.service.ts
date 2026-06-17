@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../common/redis.service';
 import { randomInt } from 'crypto';
-import axios from 'axios';
 
 @Injectable()
 export class OtpService {
@@ -63,31 +62,10 @@ export class OtpService {
     return true;
   }
 
-  async send(phone: string, code: string): Promise<void> {
-    if (this.config.get('NODE_ENV') === 'development') {
-      console.log(`[OTP] ${phone}: ${code}`);
-      return;
-    }
-
-    // Test account → مش بنبعت SMS حقيقي
-    if (this.isTestPhone(phone)) {
-      console.log(`[OTP Test Account] Skipping SMS for ${phone}`);
-      return;
-    }
-
-    // Vonage SMS API
-    await axios.post('https://rest.nexmo.com/sms/json', {
-      api_key: this.config.get('VONAGE_API_KEY'),
-      api_secret: this.config.get('VONAGE_API_SECRET'),
-      to: phone,
-      from: 'CarRent',
-      text: `كود التحقق الخاص بك: ${code}\nصالح لمدة 5 دقائق`,
-    });
-  }
-
   // ── تحقق إن الرقم هو رقم الـ test ──
   private isTestPhone(phone: string): boolean {
     const testPhone = this.config.get<string>('TEST_PHONE');
     return !!testPhone && phone === testPhone;
   }
 }
+
