@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 interface Dealer {
   id: string
   name: string
+  ownerType?: 'SHOWROOM' | 'INDIVIDUAL'
   phone: string
   cars: number
   activeRentals: number
@@ -18,6 +19,7 @@ interface Dealer {
 export default function DealersPage() {
   const [dealers, setDealers] = useState<Dealer[]>([])
   const [loading, setLoading] = useState(true)
+  const [filterType, setFilterType] = useState<'ALL' | 'SHOWROOM' | 'INDIVIDUAL'>('ALL')
 
   const fetchDealers = () => {
     fetch('/api/dashboard-data?type=dealers')
@@ -50,9 +52,6 @@ export default function DealersPage() {
           : dealer
       )
     )
-
-    // Normally we would call a backend PUT/PATCH API here:
-    // fetch(`/api/dealers/${id}/toggle-status`, { method: 'POST' }).then(() => fetchDealers())
   }
 
   const getStatusColor = (status: string) => {
@@ -60,19 +59,52 @@ export default function DealersPage() {
     return 'bg-danger/20 text-danger'
   }
 
+  const filteredDealers = dealers.filter((dealer) => {
+    if (filterType === 'ALL') return true
+    return (dealer.ownerType || 'SHOWROOM') === filterType
+  })
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Page header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Dealers</h1>
-            <p className="mt-1 text-muted">Manage and monitor all dealers</p>
+            <h1 className="text-3xl font-bold text-foreground">Partners & Dealers</h1>
+            <p className="mt-1 text-muted">Manage and monitor all showrooms and individual car hosts</p>
           </div>
-          <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-white transition-colors hover:bg-primary-dark">
-            <Plus size={20} />
-            Add Dealer
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex rounded-lg border border-border bg-background p-1">
+              <button
+                onClick={() => setFilterType('ALL')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  filterType === 'ALL' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilterType('SHOWROOM')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  filterType === 'SHOWROOM' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'
+                }`}
+              >
+                Showrooms
+              </button>
+              <button
+                onClick={() => setFilterType('INDIVIDUAL')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  filterType === 'INDIVIDUAL' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'
+                }`}
+              >
+                Individual Hosts
+              </button>
+            </div>
+            <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-white transition-colors hover:bg-primary-dark">
+              <Plus size={20} />
+              Add Partner
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -93,6 +125,7 @@ export default function DealersPage() {
               <thead>
                 <tr className="border-b border-border bg-background/50">
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Dealer Name</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Type</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Phone</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Cars</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Active Rentals</th>
@@ -103,9 +136,18 @@ export default function DealersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {dealers.map((dealer) => (
+                {filteredDealers.map((dealer) => (
                   <tr key={dealer.id} className="hover:bg-background/30 transition-colors">
                     <td className="px-6 py-4 font-medium text-foreground">{dealer.name}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        dealer.ownerType === 'INDIVIDUAL'
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                      }`}>
+                        {dealer.ownerType === 'INDIVIDUAL' ? 'Individual Host' : 'Showroom'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-sm text-muted">{dealer.phone}</td>
                     <td className="px-6 py-4 text-sm text-foreground">{dealer.cars}</td>
                     <td className="px-6 py-4 text-sm text-foreground">{dealer.activeRentals}</td>

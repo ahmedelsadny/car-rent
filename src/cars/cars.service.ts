@@ -22,10 +22,29 @@ export class CarsService {
     private notifications: NotificationsService,
   ) {}
 
-  // ── إضافة سيارة جديدة (خاص بالمعارض) ──
+  // ── إضافة سيارة جديدة (معارض أو أفراد) ──
   async create(userId: string, dto: CreateCarDto) {
     const owner = await this.prisma.owner.findUnique({ where: { userId } });
     if (!owner) throw new ForbiddenException('Owner account required');
+
+    // ✔️ فحص سقف الأسطول للمالك الفردي (الحد الأقصى 3 سيارات افتراضياً)
+    if (owner.ownerType === 'INDIVIDUAL') {
+      const maxCarsSetting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'individual_max_cars' },
+      });
+      const maxCars = maxCarsSetting ? parseInt(maxCarsSetting.value, 10) : 3;
+
+      const currentCarsCount = await this.prisma.car.count({
+        where: { ownerId: owner.id },
+      });
+
+      if (currentCarsCount >= maxCars) {
+        throw new BadRequestException({
+          ar: `الحد الأقصى المسموح به للمالك الفردي هو ${maxCars} سيارات فقط`,
+          en: `Individual owners can list a maximum of ${maxCars} cars only`,
+        });
+      }
+    }
 
     // تحقق من عدم تكرار لوحة السيارة
     const existing = await this.prisma.car.findUnique({
@@ -46,6 +65,7 @@ export class CarsService {
         pricePerMonth: dto.pricePerMonth ?? null,
         features: dto.features ?? [],
         imageUrls: dto.imageUrls ?? [],
+        registrationDocUrl: dto.registrationDocUrl ?? null,
         transmission: dto.transmission ?? 'automatic',
         seats: dto.seats ?? 5,
         driverRequired: dto.driverRequired ?? false,

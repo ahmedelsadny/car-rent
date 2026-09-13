@@ -67,6 +67,11 @@ enum InsuranceType {
   COMPREHENSIVE   // شامل (بيدفع إضافي/يوم)
 }
 
+enum OwnerType {
+  SHOWROOM        // معرض تأجير سيارات
+  INDIVIDUAL      // صاحب سيارة فردي
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model User {
@@ -94,8 +99,13 @@ model User {
 model Owner {
   id              String           @id @default(uuid())
   userId          String           @unique @map("user_id")
-  businessName    String           @map("business_name")
+  ownerType       OwnerType        @default(SHOWROOM) @map("owner_type")
+  businessName    String?          @map("business_name")
   commercialReg   String?          @map("commercial_reg")
+  nationalId      String?          @map("national_id")
+  idCardFrontUrl  String?          @map("id_card_front_url")
+  idCardBackUrl   String?          @map("id_card_back_url")
+  utilityBillUrl  String?          @map("utility_bill_url")
   address         String?
   branchAddress   String?          @map("branch_address")  // عنوان الاستلام للـ PICKUP
   branchLat       Float?           @map("branch_lat")
@@ -117,26 +127,27 @@ model Owner {
 }
 
 model Car {
-  id             String    @id @default(uuid())
-  ownerId        String    @map("owner_id")
-  make           String
-  model          String
-  year           Int
-  licensePlate   String    @unique @map("license_plate")
-  color          String
-  transmission   String    @default("automatic")
-  seats          Int       @default(5)
-  pricePerDay    Float     @map("price_per_day")
-  pricePerWeek   Float?    @map("price_per_week")
-  pricePerMonth  Float?    @map("price_per_month")
-  features       String[]  @default([])
-  imageUrls      String[]  @default([]) @map("image_urls")
-  status         CarStatus @default(AVAILABLE)
-  driverRequired Boolean   @default(false) @map("driver_required") // لو true ← لا تُأجَّر إلا بسواق
-  isApproved     Boolean   @default(false) @map("is_approved")
-  availableFrom  DateTime? @map("available_from")
-  availableTo    DateTime? @map("available_to")
-  createdAt      DateTime  @default(now()) @map("created_at")
+  id                 String    @id @default(uuid())
+  ownerId            String    @map("owner_id")
+  make               String
+  model              String
+  year               Int
+  licensePlate       String    @unique @map("license_plate")
+  color              String
+  transmission       String    @default("automatic")
+  seats              Int       @default(5)
+  pricePerDay        Float     @map("price_per_day")
+  pricePerWeek       Float?    @map("price_per_week")
+  pricePerMonth      Float?    @map("price_per_month")
+  features           String[]  @default([])
+  imageUrls          String[]  @default([]) @map("image_urls")
+  registrationDocUrl String?   @map("registration_doc_url") // صورة رخصة تسيير السيارة / التوكيل الموثق
+  status             CarStatus @default(AVAILABLE)
+  driverRequired     Boolean   @default(false) @map("driver_required") // لو true ← لا تُأجَّر إلا بسواق
+  isApproved         Boolean   @default(false) @map("is_approved")
+  availableFrom      DateTime? @map("available_from")
+  availableTo        DateTime? @map("available_to")
+  createdAt          DateTime  @default(now()) @map("created_at")
 
   owner              Owner                  @relation(fields: [ownerId], references: [id])
   bookings           Booking[]

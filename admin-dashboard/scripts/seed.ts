@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { user } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 
 async function seedAdmin() {
   try {
@@ -9,7 +10,7 @@ async function seedAdmin() {
     const existingAdmin = await db
       .select()
       .from(user)
-      .where({ email: 'admin@admin.com' })
+      .where(eq(user.email, 'admin@admin.com'))
     
     if (existingAdmin.length > 0) {
       console.log('✓ Admin user already exists')

@@ -150,6 +150,8 @@ export class UsersService {
       verifiedUsers,
       totalOwners,
       verifiedOwners,
+      totalShowrooms,
+      totalIndividuals,
       totalCars,
       approvedCars,
       rentedCars,
@@ -162,6 +164,8 @@ export class UsersService {
       this.prisma.user.count({ where: { verifiedAt: { not: null } } }),
       this.prisma.owner.count(),
       this.prisma.owner.count({ where: { isVerified: true } }),
+      this.prisma.owner.count({ where: { ownerType: 'SHOWROOM' } }),
+      this.prisma.owner.count({ where: { ownerType: 'INDIVIDUAL' } }),
       this.prisma.car.count(),
       this.prisma.car.count({ where: { isApproved: true } }),
       this.prisma.car.count({ where: { status: 'RENTED', isApproved: true } }),
@@ -180,7 +184,12 @@ export class UsersService {
 
     return {
       users: { total: totalUsers, verified: verifiedUsers },
-      owners: { total: totalOwners, verified: verifiedOwners },
+      owners: {
+        total: totalOwners,
+        verified: verifiedOwners,
+        showrooms: totalShowrooms,
+        individuals: totalIndividuals,
+      },
       cars: {
         total: totalCars,
         approved: approvedCars,
@@ -198,9 +207,36 @@ export class UsersService {
 
   // جلب إعدادات النظام (Admin only)
   async getSystemSettings() {
-    return this.prisma.systemSetting.findMany({
+    const defaultSettings: Record<string, string> = {
+      commission_rate_showroom_short_term: '0.05',
+      commission_rate_showroom_long_term: '0.03',
+      commission_rate_individual_short_term: '0.12',
+      commission_rate_individual_long_term: '0.08',
+      individual_max_cars: '3',
+      driver_option_enabled: 'true',
+      driver_fee_per_day: '150',
+      delivery_home_fee: '200',
+    };
+
+    const existing = await this.prisma.systemSetting.findMany({
       orderBy: { key: 'asc' },
     });
+
+    const existingKeys = new Set(existing.map((s) => s.key));
+    const missingKeys = Object.keys(defaultSettings).filter((k) => !existingKeys.has(k));
+
+    if (missingKeys.length > 0) {
+      await this.prisma.systemSetting.createMany({
+        data: missingKeys.map((key) => ({ key, value: defaultSettings[key] })),
+        skipDuplicates: true,
+      });
+
+      return this.prisma.systemSetting.findMany({
+        orderBy: { key: 'asc' },
+      });
+    }
+
+    return existing;
   }
 
   // تحديث إعداد معين بالنظام (Admin only)

@@ -1,8 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { UpdateOwnerDto } from './dto/update-owner.dto';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, OwnerType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -12,16 +12,30 @@ export class OwnersService {
     private notifications: NotificationsService,
   ) {}
 
-  // تسجيل معرض جديد
+  // تسجيل معرض جديد أو مالك سيارة فردي
   async register(userId: string, dto: RegisterOwnerDto) {
     const existing = await this.prisma.owner.findUnique({ where: { userId } });
     if (existing) throw new ConflictException('Already registered as owner');
 
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const ownerType = dto.ownerType || OwnerType.SHOWROOM;
+
+    if (ownerType === OwnerType.SHOWROOM && !dto.businessName) {
+      throw new BadRequestException('اسم المعرض إلزامي لمعارض السيارات');
+    }
+
+    const businessName = dto.businessName || user?.name || 'مالك سيارة';
+
     return this.prisma.owner.create({
       data: {
         userId,
-        businessName: dto.businessName,
+        ownerType,
+        businessName,
         commercialReg: dto.commercialReg,
+        nationalId: dto.nationalId,
+        idCardFrontUrl: dto.idCardFrontUrl,
+        idCardBackUrl: dto.idCardBackUrl,
+        utilityBillUrl: dto.utilityBillUrl,
         address: dto.address,
         logoUrl: dto.logoUrl,
         coverUrl: dto.coverUrl,
@@ -164,43 +178,55 @@ export class OwnersService {
     });
   }
 
-  // توثيق المعرض
+  // توثيق المعرض أو المالك الفردي
   async verifyOwner(id: string) {
     const owner = await this.prisma.owner.findUnique({ where: { id } });
-    if (!owner) throw new NotFoundException('المعرض غير موجود');
+    if (!owner) throw new NotFoundException('الشريك غير موجود');
 
     const updated = await this.prisma.owner.update({
       where: { id },
       data: { isVerified: true },
     });
 
-    // إرسال إشعار لصاحب المعرض بالتوثيق
+    const isIndividual = owner.ownerType === OwnerType.INDIVIDUAL;
+    const title = isIndividual ? 'تم توثيق حسابك كمالك سيارة بنجاح! 🌟' : 'تم توثيق معرضك بنجاح! 🌟';
+    const body = isIndividual
+      ? `تهانينا! تم التحقق من مستنداتك ورخصة سيارتك وتوثيق حسابك بالكامل على المنصة. يمكنك الآن استقبال الحجوزات.`
+      : `تهانينا! تم التحقق من مستندات معرضك "${owner.businessName}" وتوثيقه بالكامل على المنصة. يمكنك الآن استقبال الحجوزات ونشر السيارات.`;
+
+    // إرسال إشعار لصاحب الحساب بالتوثيق
     await this.notifications.send(owner.userId, {
       type: 'OWNER_VERIFIED',
-      title: 'تم توثيق معرضك بنجاح! 🌟',
-      body: `تهانينا! تم التحقق من مستندات معرضك "${owner.businessName}" وتوثيقه بالكامل على المنصة. يمكنك الآن استقبال الحجوزات ونشر السيارات.`,
-      data: { ownerId: owner.id },
+      title,
+      body,
+      data: { ownerId: owner.id, ownerType: owner.ownerType },
     });
 
     return updated;
   }
 
-  // إلغاء توثيق المعرض
+  // إلغاء توثيق المعرض أو المالك الفردي
   async unverifyOwner(id: string) {
     const owner = await this.prisma.owner.findUnique({ where: { id } });
-    if (!owner) throw new NotFoundException('المعرض غير موجود');
+    if (!owner) throw new NotFoundException('الشريك غير موجود');
 
     const updated = await this.prisma.owner.update({
       where: { id },
       data: { isVerified: false },
     });
 
-    // إرسال إشعار لصاحب المعرض بإلغاء التوثيق
+    const isIndividual = owner.ownerType === OwnerType.INDIVIDUAL;
+    const title = isIndividual ? 'تنبيه: إلغاء توثيق حساب المالك ⚠️' : 'تنبيه: إلغاء توثيق المعرض ⚠️';
+    const body = isIndividual
+      ? `تم إلغاء توثيق حسابك كمالك سيارة من قبل الإدارة. يرجى مراجعة الدعم الفني للمزيد من التفاصيل.`
+      : `تم إلغاء توثيق معرضك "${owner.businessName}" من قبل الإدارة. يرجى التواصل مع الدعم الفني للمزيد من التفاصيل.`;
+
+    // إرسال إشعار لصاحب الحساب بإلغاء التوثيق
     await this.notifications.send(owner.userId, {
       type: 'OWNER_UNVERIFIED',
-      title: 'تنبيه: إلغاء توثيق المعرض ⚠️',
-      body: `تم إلغاء توثيق معرضك "${owner.businessName}" من قبل الإدارة. يرجى التواصل مع الدعم الفني للمزيد من التفاصيل.`,
-      data: { ownerId: owner.id },
+      title,
+      body,
+      data: { ownerId: owner.id, ownerType: owner.ownerType },
     });
 
     return updated;

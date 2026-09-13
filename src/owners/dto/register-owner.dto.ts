@@ -1,16 +1,43 @@
-import { IsString, IsOptional, MinLength, IsUrl } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsUrl, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { OwnerType } from '@prisma/client';
 
 export class RegisterOwnerDto {
-  @ApiProperty({ example: 'معرض النيل للسيارات' })
-  @IsString()
-  @MinLength(3)
-  businessName: string;
+  @ApiPropertyOptional({ enum: OwnerType, default: OwnerType.SHOWROOM, description: 'نوع الحساب: معرض أو مالك فردي' })
+  @IsOptional()
+  @IsEnum(OwnerType)
+  ownerType?: OwnerType;
 
-  @ApiPropertyOptional({ example: '123456789' })
+  @ApiPropertyOptional({ example: 'معرض النيل للسيارات' })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  businessName?: string;
+
+  @ApiPropertyOptional({ example: '123456789', description: 'السجل التجاري (إلزامي للمعرض عند التوثيق)' })
   @IsOptional()
   @IsString()
   commercialReg?: string;
+
+  @ApiPropertyOptional({ example: '29901011234567', description: 'الرقم القومي (للمالك الفردي)' })
+  @IsOptional()
+  @IsString()
+  nationalId?: string;
+
+  @ApiPropertyOptional({ example: 'https://r2.carrent.com/ids/front.jpg', description: 'صورة بطاقة الرقم القومي وجه' })
+  @IsOptional()
+  @IsUrl({}, { message: 'رابط صورة البطاقة غير صالح' })
+  idCardFrontUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://r2.carrent.com/ids/back.jpg', description: 'صورة بطاقة الرقم القومي ظهر' })
+  @IsOptional()
+  @IsUrl({}, { message: 'رابط صورة البطاقة غير صالح' })
+  idCardBackUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://r2.carrent.com/bills/electric.jpg', description: 'إيصال مرافق حديث لإثبات محل السكن' })
+  @IsOptional()
+  @IsUrl({}, { message: 'رابط إيصال المرافق غير صالح' })
+  utilityBillUrl?: string;
 
   @ApiPropertyOptional({ example: '15 شارع التحرير، القاهرة' })
   @IsOptional()

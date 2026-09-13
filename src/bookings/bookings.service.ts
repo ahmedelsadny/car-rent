@@ -37,8 +37,27 @@ export class BookingsService {
     const driverOptionEnabled = settingsMap.get('driver_option_enabled') === 'true';
     const driverFeePerDay = parseFloat(settingsMap.get('driver_fee_per_day') || '150');
     const deliveryHomeFee = parseFloat(settingsMap.get('delivery_home_fee') || '200');
-    const commissionRateShortTerm = parseFloat(settingsMap.get('commission_rate_short_term') || '0.05');
-    const commissionRateLongTerm = parseFloat(settingsMap.get('commission_rate_long_term') || '0.03');
+    // عمولات المعارض المنفصلة
+    const commShowroomShort = parseFloat(
+      settingsMap.get('commission_rate_showroom_short_term') ||
+      settingsMap.get('commission_rate_short_term') ||
+      '0.05'
+    );
+    const commShowroomLong = parseFloat(
+      settingsMap.get('commission_rate_showroom_long_term') ||
+      settingsMap.get('commission_rate_long_term') ||
+      '0.03'
+    );
+
+    // عمولات الأفراد المنفصلة
+    const commIndividualShort = parseFloat(
+      settingsMap.get('commission_rate_individual_short_term') ||
+      '0.12'
+    );
+    const commIndividualLong = parseFloat(
+      settingsMap.get('commission_rate_individual_long_term') ||
+      '0.08'
+    );
 
     // التحقق من إتاحة خيار السائق
     if ((dto.withDriver || car.driverRequired) && !driverOptionEnabled) {
@@ -86,8 +105,12 @@ export class BookingsService {
 
     const totalAmount = subtotal + deliveryFee + driverFee + insuranceFee - discountAmount;
     
-    // حساب نسبة عمولة المنصة بناءً على مدة الحجز (مسترجعة ديناميكياً من إعدادات النظام)
-    const commissionRate = totalDays >= 30 ? commissionRateLongTerm : commissionRateShortTerm;
+    // حساب نسبة عمولة المنصة بناءً على نوع المالك (معرض مقابل فرد) ومدة الحجز
+    const isIndividual = car.owner?.ownerType === 'INDIVIDUAL';
+    const commissionRate = isIndividual
+      ? (totalDays >= 30 ? commIndividualLong : commIndividualShort)
+      : (totalDays >= 30 ? commShowroomLong : commShowroomShort);
+
     const commission = subtotal * commissionRate;
     const ownerPayout = subtotal - commission + deliveryFee + driverFee;
 

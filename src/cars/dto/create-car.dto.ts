@@ -95,6 +95,14 @@ export class CreateCarDto {
   driverRequired?: boolean;
 
   @ApiPropertyOptional({
+    example: 'https://r2.example.com/car-license.jpg',
+    description: 'رابط صورة رخصة تسيير السيارة أو التوكيل الموثق (إلزامي لتوثيق ملكية الأفراد)',
+  })
+  @IsOptional()
+  @IsUrl({}, { message: 'رابط وثيقة ملكية السيارة غير صالح' })
+  registrationDocUrl?: string;
+
+  @ApiPropertyOptional({
     example: '2026-06-01',
     description: 'تاريخ بداية إتاحة السيارة للإيجار',
   })

@@ -6,8 +6,11 @@ import { useState } from 'react'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
-    shortTermCommission: 5,
-    longTermCommission: 3,
+    showroomShortTermCommission: 5,
+    showroomLongTermCommission: 3,
+    individualShortTermCommission: 12,
+    individualLongTermCommission: 8,
+    individualMaxCars: 3,
     minBookingDays: 1,
     maxBookingDays: 365,
     platformFeePercentage: 1,
@@ -26,7 +29,7 @@ export default function SettingsPage() {
   }
 
   const handlePermissionChange = (key: string) => {
-    setPermissions((prev) => ({ ...prev, [key]: !prev[key] }))
+    setPermissions((prev) => ({ ...prev, [key]: !prev[key as keyof typeof prev] }))
   }
 
   return (
@@ -35,110 +38,191 @@ export default function SettingsPage() {
         {/* Page header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-          <p className="mt-1 text-muted">Configure platform settings and permissions</p>
+          <p className="mt-1 text-muted">Configure platform settings, partner rules, and permissions</p>
         </div>
 
         {/* Commission Configuration */}
         <div className="rounded-lg border border-border bg-secondary p-6">
           <div className="flex items-center gap-3">
             <Sliders size={24} className="text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Commission Rules</h2>
+            <h2 className="text-lg font-semibold text-foreground">Commission & Fleet Rules</h2>
           </div>
 
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                Short-term Commission (%)
-              </label>
-              <div className="mt-2 flex items-center gap-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  value={settings.shortTermCommission}
-                  onChange={(e) =>
-                    handleSettingChange('shortTermCommission', Number(e.target.value))
-                  }
-                  className="flex-1"
-                />
-                <span className="w-12 rounded-lg border border-border bg-background px-3 py-2 text-center font-medium text-foreground">
-                  {settings.shortTermCommission}%
-                </span>
+          <div className="mt-6 space-y-6">
+            {/* Showroom Commissions */}
+            <div className="rounded-md border border-border/50 bg-background/30 p-4">
+              <h3 className="text-sm font-semibold text-cyan-400">Showrooms Commission Rules (المعارض والشركات)</h3>
+              <div className="mt-4 grid gap-6 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Short-term Commission (%)
+                  </label>
+                  <div className="mt-2 flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="0"
+                      max="25"
+                      value={settings.showroomShortTermCommission}
+                      onChange={(e) =>
+                        handleSettingChange('showroomShortTermCommission', Number(e.target.value))
+                      }
+                      className="flex-1"
+                    />
+                    <span className="w-12 rounded-lg border border-border bg-background px-3 py-2 text-center font-medium text-foreground">
+                      {settings.showroomShortTermCommission}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">For bookings less than 30 days</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Long-term Commission (%)
+                  </label>
+                  <div className="mt-2 flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="0"
+                      max="20"
+                      value={settings.showroomLongTermCommission}
+                      onChange={(e) =>
+                        handleSettingChange('showroomLongTermCommission', Number(e.target.value))
+                      }
+                      className="flex-1"
+                    />
+                    <span className="w-12 rounded-lg border border-border bg-background px-3 py-2 text-center font-medium text-foreground">
+                      {settings.showroomLongTermCommission}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">For monthly bookings (30+ days)</p>
+                </div>
               </div>
-              <p className="mt-1 text-xs text-muted">For bookings less than 7 days</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                Long-term Commission (%)
-              </label>
-              <div className="mt-2 flex items-center gap-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  value={settings.longTermCommission}
-                  onChange={(e) =>
-                    handleSettingChange('longTermCommission', Number(e.target.value))
-                  }
-                  className="flex-1"
-                />
-                <span className="w-12 rounded-lg border border-border bg-background px-3 py-2 text-center font-medium text-foreground">
-                  {settings.longTermCommission}%
-                </span>
+            {/* Individual Host Commissions & Fleet Cap */}
+            <div className="rounded-md border border-border/50 bg-background/30 p-4">
+              <h3 className="text-sm font-semibold text-amber-400">Individual Hosts Commission & Fleet Rules (أصحاب السيارات الأفراد)</h3>
+              <div className="mt-4 grid gap-6 md:grid-cols-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Short-term Commission (%)
+                  </label>
+                  <div className="mt-2 flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="0"
+                      max="30"
+                      value={settings.individualShortTermCommission}
+                      onChange={(e) =>
+                        handleSettingChange('individualShortTermCommission', Number(e.target.value))
+                      }
+                      className="flex-1"
+                    />
+                    <span className="w-12 rounded-lg border border-border bg-background px-3 py-2 text-center font-medium text-foreground">
+                      {settings.individualShortTermCommission}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">For bookings less than 30 days</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Long-term Commission (%)
+                  </label>
+                  <div className="mt-2 flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="0"
+                      max="25"
+                      value={settings.individualLongTermCommission}
+                      onChange={(e) =>
+                        handleSettingChange('individualLongTermCommission', Number(e.target.value))
+                      }
+                      className="flex-1"
+                    />
+                    <span className="w-12 rounded-lg border border-border bg-background px-3 py-2 text-center font-medium text-foreground">
+                      {settings.individualLongTermCommission}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">For monthly bookings (30+ days)</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Max Cars Per Individual Host
+                  </label>
+                  <div className="mt-2 flex items-center gap-4">
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={settings.individualMaxCars}
+                      onChange={(e) =>
+                        handleSettingChange('individualMaxCars', Number(e.target.value))
+                      }
+                      className="w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-muted">الحد الأقصى المسموح به للمالك الفردي (افتراضياً 3)</p>
+                </div>
               </div>
-              <p className="mt-1 text-xs text-muted">For bookings 7 days or more</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                Minimum Booking Days
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={settings.minBookingDays}
-                onChange={(e) =>
-                  handleSettingChange('minBookingDays', Number(e.target.value))
-                }
-                className="mt-2 w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
+            {/* Booking Limits & Platform Fees */}
+            <div className="rounded-md border border-border/50 bg-background/30 p-4">
+              <h3 className="text-sm font-semibold text-foreground">Booking Limits & Platform Fees</h3>
+              <div className="mt-4 grid gap-6 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Minimum Booking Days
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={settings.minBookingDays}
+                    onChange={(e) =>
+                      handleSettingChange('minBookingDays', Number(e.target.value))
+                    }
+                    className="mt-2 w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                Maximum Booking Days
-              </label>
-              <input
-                type="number"
-                max="365"
-                value={settings.maxBookingDays}
-                onChange={(e) =>
-                  handleSettingChange('maxBookingDays', Number(e.target.value))
-                }
-                className="mt-2 w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground">
+                    Maximum Booking Days
+                  </label>
+                  <input
+                    type="number"
+                    max="365"
+                    value={settings.maxBookingDays}
+                    onChange={(e) =>
+                      handleSettingChange('maxBookingDays', Number(e.target.value))
+                    }
+                    className="mt-2 w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-foreground">
-                Platform Fee (%)
-              </label>
-              <div className="mt-2 flex items-center gap-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  value={settings.platformFeePercentage}
-                  onChange={(e) =>
-                    handleSettingChange('platformFeePercentage', Number(e.target.value))
-                  }
-                  className="flex-1"
-                />
-                <span className="w-16 rounded-lg border border-border bg-background px-3 py-2 text-center font-medium text-foreground">
-                  {settings.platformFeePercentage}%
-                </span>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-foreground">
+                    Platform Fee (%)
+                  </label>
+                  <div className="mt-2 flex items-center gap-4">
+                    <input
+                      type="range"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value={settings.platformFeePercentage}
+                      onChange={(e) =>
+                        handleSettingChange('platformFeePercentage', Number(e.target.value))
+                      }
+                      className="flex-1"
+                    />
+                    <span className="w-16 rounded-lg border border-border bg-background px-3 py-2 text-center font-medium text-foreground">
+                      {settings.platformFeePercentage}%
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
